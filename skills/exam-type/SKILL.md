@@ -15,7 +15,7 @@ description: "После выбора экзамена — уточнить ти
 ## Логика
 1. Показать варианты типа экзамена
 2. Получить ответ
-3. **Записать в `USER.md` → `exam_type: ege|oge|admission|other`**
+3. **Записать в `users/<user_key>/profile.md` → `exam_type: ege|oge|admission|other`**
 4. Если «другой» — `exam_type_note: <текст>`
 5. Подтвердить и перейти к `exam-subject`
 
@@ -40,7 +40,7 @@ description: "После выбора экзамена — уточнить ти
 | `4` / `другой` | `other` | Спросить: «Какой экзамен?» → `exam_type_note` |
 
 ## Данные
-- `USER.md` → `exam_type`, опционально `exam_type_note`
+- `users/<user_key>/profile.md` → `exam_type`, опционально `exam_type_note`
 
 ## Зависимости
 - Зависит от `purpose-select` (purpose = `exam`)

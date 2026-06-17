@@ -11,7 +11,7 @@ The skill invokes the message action with the action shape. Example for a task p
   "action": "send",
   "channel": "telegram",
   "to": "<OWNER_TG_USER_ID>",
-  "message": "Пора за *Физика* 🦊\nСессия по физике\n≈60 мин\n\nКак настрой, начинаем?",
+  "message": "Пора за *Физика* 🌅\nСессия по физике\n≈60 мин\n\nКак настрой, начинаем?",
   "buttons": [
     [
       { "text": "Начинаю",     "callback_data": "goal:done:t_101" }
@@ -37,7 +37,7 @@ When sending from JS/TS or shell, the Telegram Bot API expects `reply_markup.inl
 ```json
 {
   "chat_id": "<OWNER_TG_USER_ID>",
-  "text": "Пора за *Физика* 🦊\nСессия по физике\n≈60 мин\n\nКак настрой, начинаем?",
+  "text": "Пора за *Физика* 🌅\nСессия по физике\n≈60 мин\n\nКак настрой, начинаем?",
   "parse_mode": "Markdown",
   "reply_markup": {
     "inline_keyboard": [
@@ -64,7 +64,7 @@ curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" 
   -H "Content-Type: application/json" \
   -d '{
     "chat_id": "<OWNER_TG_USER_ID>",
-    "text": "Пора за *Физика* 🦊\n...",
+    "text": "Пора за *Физика* 🌅\n...",
     "parse_mode": "Markdown",
     "reply_markup": {
       "inline_keyboard": [

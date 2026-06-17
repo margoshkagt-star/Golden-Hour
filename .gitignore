@@ -1,3 +1,13 @@
-# Не публиковать на GitHub — названия/содержание ещё не финальные
+# Приватные данные пользователей и владельца — НЕ публиковать
+users/
+memory/
+projects/
+USER.md
+MEMORY.md
+plans/
+state/
+*.bak-test
+
+# Черновые/нефинальные дампы
 evening-task-triage-*/
 work-on-site-*/

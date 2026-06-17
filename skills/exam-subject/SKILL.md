@@ -15,7 +15,7 @@ description: "После типа экзамена — предмет. Блок 
 ## Логика
 1. Показать список предметов (адаптировать под `exam_type`, если очевидно)
 2. Получить ответ
-3. **Записать в `USER.md` → `exam_subject: <код>`**
+3. **Записать в `users/<user_key>/profile.md` → `exam_subject: <код>`**
 4. Если «другой» — `exam_subject_note: <текст>`
 5. Подтвердить и перейти к `exam-topics`
 
@@ -54,7 +54,7 @@ description: "После типа экзамена — предмет. Блок 
 **ЕГЭ математика:** если пользователь сразу пишет «профиль» / «база» — записать `exam_subject_variant: profile|base`.
 
 ## Данные
-- `USER.md` → `exam_subject`, опционально `exam_subject_note`, `exam_subject_variant`
+- `users/<user_key>/profile.md` → `exam_subject`, опционально `exam_subject_note`, `exam_subject_variant`
 
 ## Зависимости
 - Зависит от `exam-type`

@@ -1,24 +1,24 @@
 ---
 name: "daily-plan"
-description: "Генерирует plans/YYYY-MM-DD.json из USER.md (subjects, deadlines, daily_hours). Без плана goal-checkin-notifier молчит."
+description: "Генерирует users/<user_key>/plans/YYYY-MM-DD.json из профиля и макро-плана пользователя. Без дневного плана goal-checkin-notifier молчит. Требует setup_status=complete."
 ---
 
 # daily-plan
 
 ## Цель
-Сгенерировать план на сегодня из данных `USER.md`. Файл `plans/YYYY-MM-DD.json` нужен `goal-checkin-notifier`, чтобы тот слал morning brief, task pings и evening check-in.
+Сгенерировать план на сегодня из профиля и макро-плана пользователя. Файл `users/<user_key>/plans/YYYY-MM-DD.json` нужен `goal-checkin-notifier`, чтобы тот слал morning brief, task pings и evening check-in.
 
 ## Триггер
 - **Авто:** после завершения цепочки onboarding (имя → purpose → ветка → самооценка)
 - **Вручную:** «спланируй день» / «создай план» / «обнови план»
 
 ## Логика
-1. Прочитать `USER.md` → извлечь `purpose`, `subjects`, `deadlines`, `daily_hours`, специфичные поля (`olympiad_subject`, `exam_subjects`, `study_topic`)
+1. Прочитать `users/<user_key>/profile.md` (цель, уровни, `hours_per_week`, `deadline`) и `users/<user_key>/plan.md` (текущая неделя макро-плана). **Требует `setup_status: complete`** — иначе вести в настройку.
 2. Сгенерировать структуру:
    - Для каждого subject создать `goal` с `weight` (1-5)
    - Создать 2-4 задачи на сегодня (по `daily_hours / 7` ≈ часов в день)
    - Распределить по времени: morning (10:00), afternoon (14:00), evening (18:00)
-3. Сохранить в `plans/YYYY-MM-DD.json` (UTF-8, pretty JSON)
+3. Сохранить в `users/<user_key>/plans/YYYY-MM-DD.json` (UTF-8, pretty JSON)
 4. Подтвердить: `План на сегодня создан: N целей, M задач, ~H ч.`
 
 ## Структура плана
@@ -69,16 +69,15 @@ description: "Генерирует plans/YYYY-MM-DD.json из USER.md (subjects,
 - **День (14:00)** — задачи / практика
 - **Вечер (18:00)** — повторение / карточки / тест
 
-## Если `USER.md` пуст
-- Сказать: «Сначала пройди онбординг — `/new`»
-- Не создавать пустой план
+## Если профиля нет / `setup_status ≠ complete`
+- Не создавать план. Сказать: «Сначала закончим настройку» → вести в онбординг через `session-start`.
 
 ## Данные
-- Читает: `USER.md`
-- Пишет: `plans/YYYY-MM-DD.json`
+- Читает: `users/<user_key>/profile.md`, `users/<user_key>/plan.md`
+- Пишет: `users/<user_key>/plans/YYYY-MM-DD.json`
 
 ## Зависимости
-- После `hello-intro` + `purpose-select` + (olympiad/exam/topic ветка)
+- После `setup-finalize` + `study-plan` (`setup_status: complete`)
 - Перед `goal-checkin-notifier`
 
 ## Где живёт реальное исполнение
