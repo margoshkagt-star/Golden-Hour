@@ -1,0 +1,106 @@
+{
+  "level": "L2-edges",
+  "description": "Граничные случаи, которые ломают плохие реализации.",
+  "cases": [
+    {
+      "id": "4.1",
+      "title": "Пустой список",
+      "input": [],
+      "expected": {
+        "tasks": [],
+        "no_crash": true,
+        "valid_output": true
+      }
+    },
+    {
+      "id": "4.2",
+      "title": "Задача без описания, дедлайна, категории",
+      "input": [{"title": "Что-то сделать"}],
+      "expected": {
+        "confidence": "low",
+        "weight_in_range": [1, 10]
+      }
+    },
+    {
+      "id": "4.3",
+      "title": "Очень длинное описание",
+      "input": [{
+        "title": "Подготовить стратегию",
+        "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. ".repeat(50)
+      }],
+      "expected": {
+        "parsed": true,
+        "weight_in_range": [1, 10],
+        "no_truncation_loss": true
+      }
+    },
+    {
+      "id": "4.4",
+      "title": "Конфликтующие сигналы",
+      "input": "Срочно, но не горит",
+      "expected": {
+        "confidence": "low",
+        "conflict_detected": true,
+        "weight_in_range": [1, 10]
+      }
+    },
+    {
+      "id": "4.5",
+      "title": "Задача с уже готовыми подзадачами",
+      "input": [{
+        "title": "Разработать план",
+        "subtasks": [{"title": "Шаг 1"}, {"title": "Шаг 2"}]
+      }],
+      "expected": {
+        "subtasks_count": 2,
+        "no_redecomposition": true
+      }
+    },
+    {
+      "id": "4.6",
+      "title": "Семантический дубль категории",
+      "input": [{"title": "Закрыть рабочее задание, потом пойти на рабочую встречу"}],
+      "expected": {
+        "categories_contains": ["работа"],
+        "no_near_duplicates": true
+      }
+    },
+    {
+      "id": "4.7",
+      "title": "Задача на английском",
+      "input": "Send email to client and prepare slides for Monday meeting",
+      "expected": {
+        "categories_in_russian": true,
+        "min_categories": 1
+      }
+    },
+    {
+      "id": "4.8",
+      "title": "Эмодзи, матерщина, странный формат",
+      "input": "🤑🤑 ЗАПЛАТИТЬ ЗА ВСЁ К ЧЁРТУ, %@#$!!! (срочно!!!)",
+      "expected": {
+        "parsed": true,
+        "weight_in_range": [1, 10],
+        "no_garbage_in_output": true
+      }
+    },
+    {
+      "id": "4.9",
+      "title": "50 одинаковых задач",
+      "input": Array(50).fill("помыть посуду"),
+      "expected": {
+        "tasks_count": 50,
+        "categories_consistent": true
+      }
+    },
+    {
+      "id": "4.10",
+      "title": "Спам/бессмыслица",
+      "input": "asdf qwerty 12345",
+      "expected": {
+        "reason_includes_any": ["input_unclear", "nonsensical", "не удаётся разобрать"],
+        "confidence": "low"
+      }
+    }
+  ]
+}
