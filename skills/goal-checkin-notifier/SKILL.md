@@ -33,7 +33,7 @@ Sends reminders and check-ins to a Telegram bot for the user's daily/weekly goal
 ## Output
 
 - Updated plan file with task `status` and `snoozed_until` fields.
-- Daily log at `~/.openclaw/plans/YYYY-MM-DD-log.md` of what was sent and what was answered.
+- Daily log at `users/<user_key>/plans/YYYY-MM-DD-log.md` (what was sent and what was answered).
 
 ## Open contract with the team
 

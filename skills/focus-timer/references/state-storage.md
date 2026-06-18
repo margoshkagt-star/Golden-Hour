@@ -4,8 +4,8 @@ The skill persists state across two files under the workspace. Both files includ
 
 ## File locations
 
-- `~/.openclaw/focus-timer/state/sessions.json` — current and historical sessions
-- `~/.openclaw/focus-timer/state/stats.json` — 5-window stats (24h, week, month, year, all)
+- `users/<user_key>/focus/sessions.json` — current and historical sessions
+- `users/<user_key>/focus/stats.json` — 5-window stats (24h, week, month, year, all)
 
 ## Schema versioning
 

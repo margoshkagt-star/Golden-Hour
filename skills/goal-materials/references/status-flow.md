@@ -30,4 +30,4 @@
 - `stuck` → `working` | `understood`
 - `understood` → `archived`
 
-Каждый переход пишется в `status_history`. Переходы в `understood` / `stuck` / `archived` дополнительно пишут строку в `memory/YYYY-MM-DD.md`.
+Каждый переход пишется в `status_history`. Переходы в `understood` / `stuck` / `archived` дополнительно пишут строку в `users/<user_key>/progress.md`.

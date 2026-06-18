@@ -4,7 +4,7 @@ The focus-timer skill tracks per-task and per-goal time across 5 time windows. T
 
 ## Schema versioning
 
-`state/stats.json` includes:
+`users/<user_key>/focus/stats.json` includes:
 
 - `schema_version` — current is `1`
 - `skill_name` — `"focus-timer"` (so other skills can identify the file in a shared directory)
@@ -23,7 +23,7 @@ Both fields are stable. v1 readers continue to work on v1 files. Breaking change
 
 ## File location
 
-`~/.openclaw/focus-timer/state/stats.json`
+`users/<user_key>/focus/stats.json`
 
 ## Schema (v1)
 
@@ -81,7 +81,7 @@ Each reset window is zeroed by a cron at its boundary. Cron definitions are in `
 
 If a reset cron is missed (e.g., gateway was down at 00:00):
 
-- **Next session end:** the session's `ended_at` will be in the new period; the skill detects the stale `period_start` and recomputes the window from `state/sessions.json.history` (filtering sessions to the current period) before incrementing.
+- **Next session end:** the session's `ended_at` will be in the new period; the skill detects the stale `period_start` and recomputes the window from `users/<user_key>/focus/sessions.json.history` (filtering sessions to the current period) before incrementing.
 - **Next stats query:** similar — stale `period_start` triggers a recompute.
 
 This keeps stats accurate even after a missed reset.
@@ -90,7 +90,7 @@ This keeps stats accurate even after a missed reset.
 
 ## Cross-skill contract
 
-Other skills (e.g., weekly-review, goal-progress, smart-planner) can interact with `state/stats.json` and `state/sessions.json` under these rules.
+Other skills (e.g., weekly-review, goal-progress, smart-planner) can interact with `users/<user_key>/focus/stats.json` and `users/<user_key>/focus/sessions.json` under these rules.
 
 ### ✅ Other skills MAY
 
@@ -146,7 +146,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Read focus-timer stats
-stats = json.loads(Path('~/.openclaw/focus-timer/state/stats.json').read_text())
+stats = json.loads(Path('users/<user_key>/focus/stats.json').read_text())
 
 # Verify schema before reading
 assert stats['schema_version'] == 1, f"Unsupported stats schema: {stats['schema_version']}"
@@ -158,7 +158,7 @@ goal_minutes = stats['windows']['week']['by_goal']
 
 # Read this week's plan
 monday_date = datetime.fromisoformat(week_start).date()
-plan = json.loads(Path(f'~/.openclaw/plans/{monday_date.isoformat()}.json').read_text())
+plan = json.loads(Path(f'users/<user_key>/plans/{monday_date.isoformat()}.json').read_text())
 
 # Build report
 for goal in plan['goals']:
@@ -185,7 +185,7 @@ Use historical session durations to suggest `est_minutes` for new tasks:
 
 ```python
 # For a new task, find similar past tasks by substring match
-sessions = json.loads(Path('~/.openclaw/focus-timer/state/sessions.json').read_text())
+sessions = json.loads(Path('users/<user_key>/focus/sessions.json').read_text())
 new_task_title = 'Решить задачи по алгебре'
 keyword = new_task_title.split()[0]
 similar = [s for s in sessions['history'] if keyword in s['task_title']]
@@ -203,7 +203,7 @@ If you need a guaranteed-fresh boundary (not relying on `period_start` which can
 ```python
 from datetime import datetime, timedelta
 
-sessions = json.loads(Path('~/.openclaw/focus-timer/state/sessions.json').read_text())
+sessions = json.loads(Path('users/<user_key>/focus/sessions.json').read_text())
 now = datetime.now()
 week_start = now - timedelta(days=now.weekday())  # Monday 00:00
 week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)

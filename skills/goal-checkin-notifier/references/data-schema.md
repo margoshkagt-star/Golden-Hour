@@ -4,7 +4,7 @@ Input: daily/weekly plan produced by the planning skill.
 
 ## File location
 
-`~/.openclaw/plans/YYYY-MM-DD.json`
+`users/<user_key>/plans/YYYY-MM-DD.json` (папка пользователя, см. `user-profile`)
 
 (Confirm path with the planning-skill owner.)
 

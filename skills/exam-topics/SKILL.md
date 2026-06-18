@@ -13,10 +13,10 @@ description: "Темы экзамена (карта или список юзер
 - До `exam-self-assess`
 
 ## Логика
-1. Прочитать `USER.md` → `exam_type`, `exam_subject`, `exam_subject_variant`
+1. Прочитать `users/<user_key>/profile.md` → `exam_type`, `exam_subject`, `exam_subject_variant`
 2. Показать **список тем экзамена** (карта ниже) или попросить пользователя перечислить
 3. Пользователь подтверждает список целиком, убирает лишнее или дописывает свои темы
-4. **Записать в `USER.md` → `exam_topics: [тема1, тема2, ...]`**
+4. **Записать в `users/<user_key>/profile.md` → `exam_topics: [тема1, тема2, ...]`**
 5. Если пользователь дал свой список — `exam_topics_source: user|codifier|mixed`
 6. Подтвердить и перейти к `exam-self-assess`
 
@@ -104,7 +104,7 @@ description: "Темы экзамена (карта или список юзер
 | Карта + дополнения | объединить → `exam_topics_source: mixed` |
 
 ## Данные
-- `USER.md` → `exam_topics: [...]`, `exam_topics_source: codifier|user|mixed`
+- `users/<user_key>/profile.md` → `exam_topics: [...]`, `exam_topics_source: codifier|user|mixed`
 
 ## Зависимости
 - Зависит от `exam-subject`

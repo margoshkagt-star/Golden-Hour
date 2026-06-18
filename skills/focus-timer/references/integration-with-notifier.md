@@ -22,7 +22,7 @@ The two skills work together for the "Начинаю" button flow and the end-of
 2. Bot sends: "Молодец! 🎉 Занимался *{task_title}* {minutes} мин. Что дальше?" with buttons `[Засчитать]` and `[Ещё!]`
 3. User clicks `[Засчитать]` (callback: `timer:done:<task_id>`)
 4. `focus-timer` writes `task.status = "done"` to the plan file
-5. `focus-timer` updates `state/stats.json` (increments all 5 windows for this session)
+5. `focus-timer` updates `users/<user_key>/focus/stats.json` (increments all 5 windows for this session)
 6. `goal-checkin-notifier` should:
    - Skip pings for this task for the rest of the day (it's done)
    - Not include it in evening check-in's "remaining tasks" list

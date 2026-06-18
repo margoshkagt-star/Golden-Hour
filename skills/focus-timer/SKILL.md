@@ -1,173 +1,173 @@
 ---
 name: "focus-timer"
-description: "\"Focus session timer with duration picker, praise-on-complete, and 5-window stats (24h/week/month/year/all). Logs to plan.\""
+description: "Таймер фокус-сессии: выбор длительности, похвала по завершении, статистика по 5 окнам (24ч/неделя/месяц/год/всё). Записывает в план."
 ---
 
-# Focus Timer
+# Focus Timer — focus-timer
 
-Starts, tracks, and stops focused work sessions. Triggered by:
-1. User command — "начать [duration] [task_title]"
-2. From `goal-checkin-notifier` "Начинаю" button — sends a duration selection prompt, starts timer once user picks
+Запускает, отслеживает и останавливает фокус-сессии. **Хранилище per-user** (`users/<user_key>/focus/`), требует `setup_status: complete`. Триггеры:
+1. Команда пользователя — «начать [длительность] [название_задачи]»
+2. Из кнопки «Начинаю» от `goal-checkin-notifier` — отправляет промпт выбора длительности, запускает таймер после выбора
 
-## Workflow
+## Логика
 
-1. **Parse trigger**:
-   - User free text in TG → match against command patterns
-   - Incoming message starts with `callback_data: goal:done:` → send duration selection prompt (NOT auto-start)
-   - Incoming message starts with `callback_data: goal:snooze:` or `goal:skip:` → ignore
-   - Incoming message starts with `callback_data: timer:duration:<N>:` → user picked a duration from the prompt — start session
-   - Incoming message starts with `callback_data: timer:custom:` → user clicked "своё" — ask "Сколько минут?"
-   - Incoming message starts with `callback_data: timer:done:` → mark task done
-   - Incoming message starts with `callback_data: timer:more:` → show duration selection for new session
-   - Incoming message starts with `callback_data: timer:stats:` → show stats summary
+1. **Разобрать триггер**:
+   - Свободный текст в Telegram → матчить против паттернов команд
+   - Входящее сообщение начинается с `callback_data: goal:done:` → отправить промпт выбора длительности (НЕ автостарт)
+   - Входящее сообщение начинается с `callback_data: goal:snooze:` или `goal:skip:` → игнорировать
+   - Входящее сообщение начинается с `callback_data: timer:duration:<N>:` → пользователь выбрал длительность из промпта — запустить сессию
+   - Входящее сообщение начинается с `callback_data: timer:custom:` → пользователь нажал «своё» — спросить «Сколько минут?»
+   - Входящее сообщение начинается с `callback_data: timer:done:` → отметить задачу выполненной
+   - Входящее сообщение начинается с `callback_data: timer:more:` → показать выбор длительности для новой сессии
+   - Входящее сообщение начинается с `callback_data: timer:stats:` → показать сводку статистики
 
-2. **Resolve task context**:
-   - For explicit `task_id` in command or callback, look up the task in today's plan
-   - For "начать" without task context, use the most recent active task
+2. **Определить контекст задачи**:
+   - Если в команде или callback явно указан `task_id` — найти задачу в сегодняшнем плане
+   - Для «начать» без контекста задачи — взять последнюю активную задачу
 
-3. **Resolve duration**:
-   - **From user command** ("начать 30" / "начать час" / "начать 1ч 30м") — use the explicit value
-   - **From "Начинаю" button** — user has NOT specified; show selection prompt:
+3. **Определить длительность**:
+   - **Из команды пользователя** («начать 30» / «начать час» / «начать 1ч 30м») — взять явное значение
+   - **Из кнопки «Начинаю»** — пользователь НЕ указал; показать промпт выбора:
      ```
      Сколько хочешь заниматься над *{task_title}*?
 
      [⏱ час (60)] [⏱ пара (45)] [⏱ 30м] [⏱ своё]
      ```
-   - **From "своё"** — ask: "Сколько минут? (например, `30`, `1ч 30м`, `90`)"
-   - **From "Ещё!" button** (after timer expiry) — use just-finished duration, or ask
+   - **Из «своё»** — спросить: «Сколько минут? (например, `30`, `1ч 30м`, `90`)»
+   - **Из кнопки «Ещё!»** (после истечения таймера) — взять только что завершённую длительность или спросить
 
-4. **Manage session** (silent during work, no mid-session notifications):
-   - **Start**: record `session_start`, `task_id`, `goal_id`, `planned_duration_minutes` to `state/sessions.json`. Reply: "Запустил таймер на *{task_title}* 🦊 ⏱ {duration} мин"
-   - **Stop** (manual `стоп`): compute `duration_minutes`, append to plan file's `task.time_spent_minutes`, log to daily journal. Reply: "Ок, остановил. *{minutes}* мин на *{task_title}* — сохранено в журнал, но задача осталась активной"
-   - **Pause**: "Пауза ⏸"
-   - **Resume**: "Продолжаем ⏱"
-   - **Status**: reply with elapsed time, current task
+4. **Управление сессией** (тишина во время работы, никаких оповещений в процессе):
+   - **Старт**: записать `session_start`, `task_id`, `goal_id`, `planned_duration_minutes` в `users/<user_key>/focus/sessions.json`. Ответ: «Запустил таймер на *{task_title}* 🌅 ⏱ {duration} мин»
+   - **Стоп** (ручной `стоп`): посчитать `duration_minutes`, добавить в `users/<user_key>/plans/YYYY-MM-DD.json` к `time_spent_minutes` задачи, записать в дневной журнал. Ответ: «Ок, остановил. *{minutes}* мин на *{task_title}* — сохранено в журнал, но задача осталась активной»
+   - **Пауза**: «Пауза ⏸»
+   - **Продолжить**: «Продолжаем ⏱»
+   - **Статус**: ответить с прошедшим временем и текущей задачей
 
-5. **End-of-session flow** (timer expires, PRAISE the user):
-   - Send: "Молодец! 🎉 Занимался *{task_title}* {minutes} мин. Что дальше?"
-   - Inline buttons: `[Засчитать] [Ещё!]`
-   - On `[Засчитать]`: set `task.status = "done"`, append `time_spent_minutes`, log session to `history` (`end_reason: timer_expiry_confirmed`), **update stats counters**, end
-   - On `[Ещё!]`: log finished segment to history with `end_reason: timer_expiry_continued`, send duration selection prompt for a new session on the same task
+5. **Финал сессии** (таймер истёк, ПОХВАЛИТЬ пользователя):
+   - Отправить: «Молодец! 🎉 Занимался *{task_title}* {minutes} мин. Что дальше?»
+   - Inline-кнопки: `[Засчитать] [Ещё!]`
+   - По `[Засчитать]`: установить `task.status = "done"`, добавить `time_spent_minutes`, записать сессию в `history` (`end_reason: timer_expiry_confirmed`), **обновить счётчики статистики**, завершить
+   - По `[Ещё!]`: записать завершённый сегмент в history с `end_reason: timer_expiry_continued`, отправить промпт выбора длительности для новой сессии по той же задаче
 
-6. **Update statistics on session end** — see "Statistics" section below
+6. **Обновить статистику по завершении сессии** — см. раздел «Статистика» ниже
 
-7. **Persist**: `state/sessions.json` and `state/stats.json` survive restarts; on gateway restart with active session, the user can resume
+7. **Персистить**: `users/<user_key>/focus/sessions.json` и `users/<user_key>/focus/stats.json` переживают рестарты; при рестарте gateway с активной сессией пользователь может продолжить
 
-## Schema versioning
+## Версионирование схемы
 
-Both `state/sessions.json` and `state/stats.json` are versioned for cross-skill compatibility:
+Оба файла — `users/<user_key>/focus/sessions.json` и `users/<user_key>/focus/stats.json` — версионируются для совместимости между скиллами:
 
-- `schema_version` — current is `1`
-- `skill_name` — `"focus-timer"` (so other skills can identify the producer of a file in a shared directory)
+- `schema_version` — текущая `1`
+- `skill_name` — `"focus-timer"` (чтобы другие скиллы могли определить производителя файла в общей директории)
 
-These fields are stable. v1 readers continue to work on v1 files. Breaking changes will bump `schema_version` and the v1 reader will detect "file is v2, I read v1" and refuse to write. See `references/statistics.md` for the full cross-skill contract and `references/state-storage.md` for backward-compat rules.
+Эти поля стабильны. v1-читатели продолжают работать с v1-файлами. Ломающие изменения бампят `schema_version`, и v1-читатель увидит «файл v2, я читаю v1» и откажется писать. Полный межскилловый контракт — `references/statistics.md`, правила обратной совместимости — `references/state-storage.md`.
 
-## Configuration
+## Конфигурация
 
-- `default_session_length_minutes` — default `0` (no default; ask every time via prompt)
-- `preset_durations` — `{"час": 60, "пара": 45, "30м": 30}` (Russian aliases; user-configurable)
-- `state_dir` — default `~/.openclaw/focus-timer/`
-- `mid_session_pings` — default `false` (always off — focus timer stays silent during the session)
-- `auto_log_to_plan` — default `true`
+- `default_session_length_minutes` — по умолчанию `0` (нет дефолта; всегда спрашивать через промпт)
+- `preset_durations` — `{"час": 60, "пара": 45, "30м": 30}` (русские алиасы; настраивается пользователем)
+- `state_dir` — по умолчанию `users/<user_key>/focus/`
+- `mid_session_pings` — по умолчанию `false` (всегда выключено — фокус-таймер молчит во время сессии)
+- `auto_log_to_plan` — по умолчанию `true`
 - `end_of_session_buttons` — `["Засчитать", "Ещё!"]`
-- `praise_message` — default `"Молодец! 🎉"`
-- `stats_enabled` — default `true` (5-window stats tracking)
+- `praise_message` — по умолчанию `"Молодец! 🎉"`
+- `stats_enabled` — по умолчанию `true` (5-оконная статистика)
 
-## Output
+## Выход
 
-- `state/sessions.json` — current and historical sessions (with `schema_version: 1`, `skill_name: "focus-timer"`)
-- `state/stats.json` — 5-window stats (with `schema_version: 1`, `skill_name: "focus-timer"`)
-- Plan file: `task.time_spent_minutes` (additive)
-- Plan file: `task.status = "done"` (only on `[Засчитать]`)
-- Daily log: `state/YYYY-MM-DD-log.md`
+- `users/<user_key>/focus/sessions.json` — текущие и исторические сессии (с `schema_version: 1`, `skill_name: "focus-timer"`)
+- `users/<user_key>/focus/stats.json` — статистика по 5 окнам (с `schema_version: 1`, `skill_name: "focus-timer"`)
+- Файл плана: `task.time_spent_minutes` (аддитивно)
+- Файл плана: `task.status = "done"` (только по `[Засчитать]`)
+- Дневной лог: `users/<user_key>/focus/YYYY-MM-DD-log.md`
 
-## Statistics (5 time windows — the user's "5 variables")
+## Статистика (5 временных окон — «5 переменных» пользователя)
 
-The skill tracks time spent per task and per goal across 5 time windows:
+Скилл трекает время по задачам и целям в 5 временных окнах:
 
-| Variable | Aliases | Period | Resets at |
+| Переменная | Алиасы | Период | Сброс |
 |---|---|---|---|
-| `24h` | `сегодня`, `today`, `day` | Today (local 00:00 → 23:59) | 00:00 each day |
-| `week` | `неделя`, `week` | Current ISO week (Mon → Sun) | 00:00 each Monday |
-| `month` | `месяц`, `month` | Current calendar month | 00:00 on 1st of month |
-| `year` | `год`, `year` | Current calendar year | 00:00 on Jan 1 |
-| `all` | `всё`, `all`, `всегда` | All sessions ever | **never** |
+| `24h` | `сегодня`, `today`, `day` | Сегодня (локально 00:00 → 23:59) | 00:00 каждого дня |
+| `week` | `неделя`, `week` | Текущая ISO-неделя (Пн → Вс) | 00:00 каждого понедельника |
+| `month` | `месяц`, `month` | Текущий календарный месяц | 00:00 1-го числа |
+| `year` | `год`, `year` | Текущий календарный год | 00:00 1 января |
+| `all` | `всё`, `all`, `всегда` | Все сессии когда-либо | **никогда** |
 
-For each window, the skill tracks (in `state/stats.json`):
+Для каждого окна скилл хранит (в `users/<user_key>/focus/stats.json`):
 
 - `by_task[task_id] = { minutes, sessions }`
 - `by_goal[goal_id] = { minutes, sessions }`
-- `period_start` — ISO timestamp of the current period's start (for the 4 reset windows; "all" has no `period_start`)
+- `period_start` — ISO-таймштамп начала текущего периода (для 4 окон со сбросом; у «all» нет `period_start`)
 
-### Update on session end
+### Обновление при завершении сессии
 
-When a session ends, the skill increments the relevant counters:
+Когда сессия заканчивается, скилл инкрементит соответствующие счётчики:
 
-- For each of the 4 reset windows (`24h`, `week`, `month`, `year`):
-  - If `session.ended_at >= window.period_start` → increment `by_task[task_id]` and `by_goal[goal_id]` by `session.duration_minutes` and `1`
-  - If `session.ended_at < window.period_start` → window has expired; do not increment (the next session or stats query will trigger self-healing)
-- For `all` window: always increment (never resets)
+- Для каждого из 4 окон со сбросом (`24h`, `week`, `month`, `year`):
+  - Если `session.ended_at >= window.period_start` → инкрементить `by_task[task_id]` и `by_goal[goal_id]` на `session.duration_minutes` и `1`
+  - Если `session.ended_at < window.period_start` → окно истекло; не инкрементить (следующая сессия или запрос статистики запустит self-healing)
+- Для окна `all`: всегда инкрементить (никогда не сбрасывается)
 
-### Reset at boundaries (cron-driven)
+### Сброс на границах (через cron)
 
-The 4 reset windows are zeroed by cron jobs at the period boundary. Cron definitions are in `references/cron-setup.md`. The `all` window has no reset cron — counters accumulate indefinitely.
+4 окна со сбросом обнуляются cron-задачами на границе периода. Определения cron — в `references/cron-setup.md`. У окна `all` cron на сброс нет — счётчики копятся бесконечно.
 
-### Self-healing
+### Self-healing (самовосстановление)
 
-If a reset cron is missed (e.g., gateway was down at 00:00), the next session end or stats query detects the stale `period_start` and recomputes the window from `state/sessions.json.history` (filtering sessions to the current period) before incrementing. This keeps stats accurate even after a missed reset.
+Если cron на сброс пропущен (например, gateway был выключен в 00:00), следующее завершение сессии или запрос статистики обнаружит устаревший `period_start` и пересчитает окно из `users/<user_key>/focus/sessions.json.history` (отфильтровав сессии в текущий период) перед инкрементом. Это сохраняет статистику точной даже после пропущенного сброса.
 
-### Statistics commands
+### Команды статистики
 
-- `статистика` or `/timer stats` — show all 5 windows with totals and top tasks
-- `статистика <window>` — show details for one window (`24h`, `week`, `month`, `year`, `all`)
-- `статистика <goal_keyword>` — show stats for a specific goal across all 5 windows (e.g., `статистика физика`)
+- `статистика` или `/timer stats` — показать все 5 окон с тоталами и топ-задачами
+- `статистика <window>` — детали по одному окну (`24h`, `week`, `month`, `year`, `all`)
+- `статистика <goal_keyword>` — статистика по конкретной цели во всех 5 окнах (например, `статистика физика`)
 
-Full schema, output format, command reference, **cross-skill contract, and example queries for other skills**: `references/statistics.md`.
+Полная схема, формат вывода, справка по командам, **межскилловый контракт и примеры запросов для других скиллов**: `references/statistics.md`.
 
-## Recurring daily tasks
+## Ежедневные повторяющиеся задачи
 
-For tasks that repeat daily (e.g., "Подготовка по физике" every day):
+Для задач, повторяющихся каждый день (например, «Подготовка по физике» каждый день):
 
-- Each daily session is **independent** — starts fresh, asks for duration
-- All sessions are saved to `state/sessions.json.history` regardless of date or task recurrence
-- Statistics across 5 windows aggregate these sessions
-- The skill does **not** auto-create new sessions across days and does **not** track streaks — that's a separate concern
+- Каждая дневная сессия **независима** — стартует заново, спрашивает длительность
+- Все сессии сохраняются в `users/<user_key>/focus/sessions.json.history` независимо от даты и повторяемости
+- Статистика по 5 окнам агрегирует эти сессии
+- Скилл **не** создаёт автоматически новые сессии между днями и **не** трекает streak'и — это отдельная задача
 
-## Integration with `goal-checkin-notifier`
+## Интеграция с `goal-checkin-notifier`
 
-**Task ping** (from notifier, **no time shown**):
+**Пинг по задаче** (от notifier, **без указания времени**):
 ```
 Пора за *{goal_title}* 🦊
 {task_title}
 
 Как настрой, начинаем?
 ```
-Buttons: `[Начинаю] [Отложить 30м] [Пропустить]`
+Кнопки: `[Начинаю] [Отложить 30м] [Пропустить]`
 
-**"Начинаю" button flow** (NEW: duration selection prompt, NOT auto-start):
-1. User clicks "Начинаю" (callback: `goal:done:<task_id>`)
-2. Notifier processes: updates plan's `task.status = "in_progress"`
-3. Focus-timer processes: sends duration selection prompt with 4 buttons
-4. User picks duration (button click or text)
-5. Focus-timer starts session with chosen duration, sends confirmation
+**Поток кнопки «Начинаю»** (NEW: промпт выбора длительности, НЕ автостарт):
+1. Пользователь жмёт «Начинаю» (callback: `goal:done:<task_id>`)
+2. Notifier обрабатывает: обновляет `task.status = "in_progress"` в плане
+3. Focus-timer обрабатывает: отправляет промпт выбора длительности с 4 кнопками
+4. Пользователь выбирает длительность (нажатие кнопки или текст)
+5. Focus-timer стартует сессию с выбранной длительностью, шлёт подтверждение
 
-**End-of-session "[Засчитать]":**
-1. User clicks `[Засчитать]` on the praise message
-2. Focus-timer writes `task.status = "done"` to the plan
-3. Focus-timer updates stats counters (all 5 windows)
-4. Notifier should skip pings for this task for the rest of the day
+**«Засчитать» в финале сессии:**
+1. Пользователь жмёт `[Засчитать]` на сообщении с похвалой
+2. Focus-timer пишет `task.status = "done"` в план
+3. Focus-timer обновляет счётчики статистики (все 5 окон)
+4. Notifier должен пропустить пинги по этой задаче до конца дня
 
-The notifier's "Отложить" / "Пропустить" callbacks do **not** affect the timer.
+Callback'и notifier'а «Отложить» / «Пропустить» **не** влияют на таймер.
 
-## Open contract with the team
+## Открытый контракт с командой
 
-- New field `time_spent_minutes` on tasks in the plan file
-- Time parsing rules: see `references/commands.md`
-- Duration selection UX: 4 inline buttons (час / пара / 30м / своё)
-- Praise message customization per goal/task?
-- Stats storage model: stored counters with cron-based reset + self-healing
-- 5-window time zones: user-local
-- Stats window definitions: calendar-based (Mon-Sun week, 1st-of-month, Jan 1)
-- "All time" storage: never truncated, ever-growing JSON
-- Cross-skill contract: read-only for other skills, see `references/statistics.md`
-- Schema versioning: v1 current, breaking changes bump version, see `references/statistics.md`
+- Новое поле `time_spent_minutes` у задач в файле плана
+- Правила парсинга времени: см. `references/commands.md`
+- UX выбора длительности: 4 inline-кнопки (час / пара / 30м / своё)
+- Кастомизация похвалы по цели/задаче?
+- Модель хранения статистики: счётчики со сбросом по cron + self-healing
+- Часовые пояса 5 окон: пользовательские локальные
+- Определения окон статистики: календарные (Пн-Вс неделя, 1-е число, 1 января)
+- Хранение «всё время»: никогда не обрезается, JSON растёт
+- Межскилловый контракт: read-only для других скиллов, см. `references/statistics.md`
+- Версионирование схемы: текущая v1, ломающие изменения бампят версию, см. `references/statistics.md`

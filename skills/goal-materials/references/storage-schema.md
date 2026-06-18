@@ -31,7 +31,7 @@ status_history:
       "type": "problem",
       "tags": ["параметры"],
       "status": "new",
-      "path": "materials/g_ege_math_profile/problems/2026-06-18_parametry.md",
+      "path": "users/<user_key>/materials/g_ege_math_profile/problems/2026-06-18_parametry.md",
       "created_at": "2026-06-18T11:59:00+03:00",
       "updated_at": "2026-06-18T11:59:00+03:00"
     }
@@ -39,23 +39,16 @@ status_history:
 }
 ```
 
-`index.json` перестраивается командой `materials rebuild-index`.
+Всё хранится в папке пользователя: `users/<user_key>/materials/index.json`. Перестраивается командой «пересобери индекс материалов».
 
-## memory/notes.jsonl (доп. копия)
+## Отражение в прогрессе
 
-```json
-{"type":"material","id":"m_<id>","goal_id":"...","material_type":"problem","title":"...","tags":[...],"source":"user|web_search","source_url":null,"path":"materials/.../file.md","is_idea":false,"created_at":"<ISO>"}
-```
-
-Append-only. Дописывается при `add`, не дописывается при `status`.
-
-## memory/YYYY-MM-DD.md (дневник дня)
+При смене статуса материала на `understood` / `stuck` / `archived` дописывается строка в `users/<user_key>/progress.md`:
 
 ```
-- HH:MM  📎 [goal_id] тип «название» → materials/.../file.md
 - HH:MM  ✓ [goal_id] m_<id> → understood
 - HH:MM  ❌ [goal_id] m_<id> → stuck
 - HH:MM  🗑 [goal_id] m_<id> → archived
 ```
 
-Дописывается при `add` и при смене статуса на `understood` / `stuck` / `archived`.
+(Отдельного глобального inbox больше нет — всё личное, в папке пользователя.)

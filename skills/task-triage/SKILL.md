@@ -301,7 +301,7 @@ weight = clamp(1, 10,
 
 #### Логирование
 
-Каждое действие пишется в `memory/task-execution-log.md`:
+Каждое действие пишется в `users/<user_key>/task-execution-log.md`:
 
 ```markdown
 # Execution Log
@@ -311,7 +311,7 @@ weight = clamp(1, 10,
 - capability: 🟢 self
 - status: done
 - tools: write
-- artifact: workspace/draft-theses.md
+- artifact: users/<user_key>/draft-theses.md
 - duration: ~30 сек
 - result: 3 тезиса сохранены в draft-theses.md
 ```
@@ -406,9 +406,9 @@ weight = clamp(1, 10,
 
 ## Память скилла
 
-- `memory/task-categories.md` — пользовательский пул категорий с триггерами и boost.
-- `memory/user-priorities.md` — что пользователь считает критичным (по явным подсказкам и истории).
-- `memory/task-execution-log.md` — лог всех auto-executions (только для аудита, можно чистить раз в месяц).
+- `memory/task-categories.md` — общий пул категорий с триггерами и boost (общий для всех пользователей).
+- `users/<user_key>/user-priorities.md` — что пользователь считает критичным (по явным подсказкам и истории).
+- `users/<user_key>/task-execution-log.md` — лог всех auto-executions (только для аудита, можно чистить раз в месяц).
 
 Шаблон `task-categories.md`:
 
@@ -452,7 +452,7 @@ weight = clamp(1, 10,
 3. "Есть ли что-то, что ты постоянно откладываешь?"
 4. **NEW:** "Хочешь, чтобы я сам выполнял то, что могу, или только планировал? (по умолчанию — выполняю безопасное)"
 
-Ответы сохранить в `memory/user-priorities.md`.
+Ответы сохранить в `users/<user_key>/user-priorities.md`.
 
 ---
 

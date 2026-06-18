@@ -70,7 +70,7 @@ For tasks that appear in the plan daily (recurring in the planning skill), each 
 
 - A new session starts fresh each day
 - The user picks duration again each time (no implicit carry-over)
-- All sessions go to `state/sessions.json.history`
+- All sessions go to `users/<user_key>/focus/sessions.json.history`
 - Statistics from history and stats.json aggregate these
 
 ## Ambiguity resolution

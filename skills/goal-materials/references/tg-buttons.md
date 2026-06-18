@@ -59,7 +59,7 @@ Callback приходит в агента как входящее сообщен
 
 1. Парсит `mat:<action>:<id>[:<value>]` (regex: `^mat:(\w+):([\w_]+)(?::(\w+))?$`)
 2. Выполняет действие:
-   - `status` → изменить статус, обновить `index.json` + `status_history` + строка в `memory/YYYY-MM-DD.md`
+   - `status` → изменить статус, обновить `index.json` + `status_history` + строка в `users/<user_key>/progress.md`
    - `show` → отправить содержимое файла (без кнопок)
    - `add:continue` → предложить прислать следующий
 3. Отвечает:

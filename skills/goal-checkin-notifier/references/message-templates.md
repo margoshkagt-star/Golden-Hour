@@ -1,11 +1,11 @@
 # Notification templates
 
-All messages in Russian, friendly, short. Use TG Markdown (`*bold*`, `_italic_`, `` `code` ``). Tone: тёплый, неформальный, как лис-помощник, не как корпоративный бот.
+All messages in Russian, friendly, short. Use TG Markdown (`*bold*`, `_italic_`, `` `code` ``). Tone: тёплый, неформальный, как солнце-помощник, не как корпоративный бот.
 
 ## Morning brief
 
 ```
-Доброе утро! 🦊
+Доброе утро! 🌅
 
 Сегодня {N} целей в работе:
 
@@ -21,7 +21,7 @@ All messages in Russian, friendly, short. Use TG Markdown (`*bold*`, `_italic_`,
 ## Task ping (kickoff + status check)
 
 ```
-Пора за *{goal_title}* 🦊
+Пора за *{goal_title}* 🌅
 {task_title}
 ≈{est_minutes} мин
 
@@ -33,7 +33,7 @@ Inline buttons: `[Начинаю] [Отложить 30м] [Пропустить]
 ## Evening check-in
 
 ```
-Как прошёл день? 🦊
+Как прошёл день? 🌅
 
 {completed_count}/{total_count} задач сделано.
 
