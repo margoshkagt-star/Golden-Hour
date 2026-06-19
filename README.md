@@ -38,7 +38,7 @@
 
 | Скилл | Описание | Статус |
 |-------|----------|--------|
-| [coder](skills/coder/) | MANDATORY-делегация генерации кода: main спавнит саб-агента `code-writer` через `sessions_spawn`, сам не пишет. Архитектурно main лишён `write`/`edit`/`apply_patch`/`exec`/`process` (README, references/architecture, MIT) | applied |
+| [coder](skills/coder/) | Код по запросу пользователя — саб-агенту code-writer. Эта сессия не пишет код сама, даже для простых задач. Архитектурно main лишён `write`/`edit`/`apply_patch`/`exec`/`process` (README, references/architecture, MIT) | applied |
 
 ## Цепочка онбординга
 
