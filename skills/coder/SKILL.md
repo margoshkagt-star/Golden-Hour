@@ -1,6 +1,6 @@
 ---
 name: coder
-description: "MANDATORY: every user code request is delegated to the code-writer subagent. Main session never writes code directly."
+description: "Код по запросу пользователя: передавай саб-агенту code-writer. Эта сессия не пишет код сама, даже для простых задач."
 metadata:
   {
     "openclaw":
