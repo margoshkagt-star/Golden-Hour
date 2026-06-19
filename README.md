@@ -34,6 +34,12 @@
 | [show-ideas](skills/show-ideas/) | Дайджест идей за период | proposal |
 | [idea-tools](skills/idea-tools/) | Поиск, теги, статистика по идеям | proposal |
 
+## Скиллы — инфраструктура
+
+| Скилл | Описание | Статус |
+|-------|----------|--------|
+| [coder](skills/coder/) | MANDATORY-делегация генерации кода: main спавнит саб-агента `code-writer` через `sessions_spawn`, сам не пишет. Архитектурно main лишён `write`/`edit`/`apply_patch`/`exec`/`process` (README, references/architecture, MIT) | applied |
+
 ## Цепочка онбординга
 
 ```
