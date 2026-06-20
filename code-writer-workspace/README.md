@@ -46,6 +46,8 @@ Register subagents in `openclaw.json` (`agents.list` entries for `clawsec`, `com
 
 Pair with `skills/coder/` in the **main** workspace — see `skills/coder/README.md`.
 
+Sibling workspaces: `clawsec-workspace/`, `complexity-check-workspace/`.
+
 ## Verify
 
 ```powershell
