@@ -153,6 +153,8 @@ node scripts/session-start.mjs --user <user_key>
 | Скилл | Когда | Хранилище |
 |---|---|---|
 | `study-plan` | «составь/пересобери план» (порядок тем по приоритету) | `users/<user_key>/plan.md` |
+| `task-weighting` | оценка важности и сложности тем/задач | читает `priorities`/`difficulty`/уровни |
+| `daily-balancer` | сборка сбалансированного дня (приоритет + бюджет сложности) | используется `daily-plan` |
 | `daily-plan` | «спланируй день», авто после загрузки | `users/<user_key>/plans/YYYY-MM-DD.json` |
 | `daily-study-checkin` | «чек-ин», «итог дня», авто 21:00 | `users/<user_key>/progress.md` |
 | `goal-checkin-notifier` | есть дневной план → утренний бриф, пинги, вечерний чек-ин | читает `users/<user_key>/plans/` |
@@ -169,9 +171,17 @@ node scripts/session-start.mjs --user <user_key>
 | `ideya-obrabatyvat-povtoryayuschiesya-zad` | «делай каждый день/по будням», подмешивание в дневной план | `users/<user_key>/recurring.json` |
 | `spaced-repetition` | слабые темы на повтор по растущим интервалам (1→3→7→14→30) | `profile.md` + `progress.md` |
 | `goal-materials` | «сохрани/дай задачу/теорию», материалы по цели | `users/<user_key>/materials/` |
+| `material-cache` | «дай материал по X» — сперва кеш, потом web | общий `knowledge/` (без приватных данных) |
 | `ideya-sozdavat-konspekty-urokov-po` | прислал аудио урока → конспект (нужен STT) | `users/<user_key>/materials/.../notes/` |
+| `lesson-notes-from-audio` | аудио урока → конспект (полноценный скилл) | `users/<user_key>/materials/.../notes/` |
 | `longterm-stats` | «статистика за неделю/месяц/год/всё время» | читает `users/<user_key>/tasks.yaml` |
 | `reflection-loop` | «не успел/провалил» или 2+ пропуска подряд | `users/<user_key>/progress.md` |
+| `temporal-kg` | (опц.) «когда трогал тему X, что было до/после» | `users/<user_key>/temporal-kg/` |
+| `repeatable-habits` | повторяющиеся действия, перерывы от экрана | `users/<user_key>/habits.json` |
+| `mood-checkin` | быстрый чек-ин настроения | `users/<user_key>/progress.md` |
+| `morning-quote` | мотивационная строка в утреннем брифе | — |
+| `pokazyvat-prognoz-pogody` | строка погоды в утреннем брифе | `city` в `profile.md` |
+| `task-decomposition` | разбивка крупных задач на подзадачи | `users/<user_key>/tasks.md` |
 
 | `help-menu` | «что умеешь», «помощь», «меню», «/help», и авто после настройки | — (читает `setup_status`) |
 
@@ -185,26 +195,28 @@ node scripts/session-start.mjs --user <user_key>
 profile.md (настройка)
    └─ study-plan ──────────────► plan.md (макро-план по приоритетам)
         └─ daily-plan ──(task-weighting + daily-balancer + recurring + spaced-repetition)──► plans/YYYY-MM-DD.json
-             └─ goal-checkin-notifier ──► пинги по задачам
+             └─ goal-checkin-notifier ──(утром: +погода, +quote)──► пинги по задачам
                   └─ focus-timer ──► focus/ (время) ──► зачёт задачи
                        └─ daily-study-checkin ──► progress.md (+streak)
                             ├─ spaced-repetition ──► обновляет интервалы слабых тем
                             ├─ reflection-loop ──(если срыв)──► правит plan.md/daily_load
-                            └─ longterm-stats ──► статистика
+                            └─ longterm-stats / temporal-kg ──► статистика и история
 ```
 
 **Принципы связности (выполнять):**
-- **Единый профиль — единый источник правды.** Уровни/приоритеты/нагрузка живут в `profile.md`; все скиллы читают их оттуда.
-- **Цепочка запускается автоматически.** После `study-plan` предложить `daily-plan`; после готового дня — включить `goal-checkin-notifier`.
-- **Слабые темы — сквозной сигнал.** Низкий уровень → буст `eff_priority` → чаще в `daily-plan` → `spaced-repetition`.
+- **Единый профиль — единый источник правды.** Уровни/приоритеты/нагрузка/город живут в `profile.md`; все скиллы читают их оттуда.
+- **Цепочка запускается автоматически.** После `study-plan` предложить `daily-plan`; после готового дня — включить `goal-checkin-notifier`; после фокус-сессии — `daily-study-checkin`; после чек-ина — обновить `spaced-repetition` и (при срыве) `reflection-loop`.
+- **Слабые темы — сквозной сигнал.** Низкий уровень → буст `eff_priority` → чаще в `daily-plan` → `spaced-repetition`/`temporal-kg`.
+- **Материалы общие, прогресс личный.** Предметные материалы — общий `knowledge/` (`material-cache`); «кто что разобрал» — личное (`goal-materials` в папке пользователя).
 - **Пользователь всегда знает функции.** В конце настройки и по запросу — `help-menu`.
 
 ### Дневной план: приоритет + баланс сложности
 При сборке дня (`daily-plan` через `task-weighting` + `daily-balancer`):
 - **Важное — вперёд и больше времени.** `eff_priority = важность + дедлайн-буст + слабость` (1–5).
 - **День не перегружен.** `eff_difficulty = сложность + поправка на уровень` (1–5). Сумма сложности блоков ≤ бюджету `D_max` (light 6 / normal 9 / intense 12 из `daily_load`).
-- **Размещение:** тяжёлые (≥4) — утро, средние (3) — день, лёгкие (≤2) — вечер.
-- Команды: «сделай день легче/тяжелее» → сменить `daily_load`; «<тема> важнее» → правка `priorities`.
+- **Размещение:** тяжёлые (≥4) — утро, средние (3) — день, лёгкие (≤2) — вечер. Максимум один блок 5/день; между двумя тяжёлыми — лёгкий; что не влезло — перенос на следующий день.
+- В задачи плана писать `weight` и `difficulty`, в план — `load: {sum_difficulty, budget}`.
+- Команды: «сделай день легче/тяжелее» → сменить `daily_load`; «<тема> важнее» → правка `priorities`; «<тема> тяжелее/легче» → правка `difficulty`.
 
 ### ⚙️ Детерминированные скрипты (НЕ считать в голове)
 
@@ -250,6 +262,7 @@ profile.md (настройка)
 - ❌ Отвечать на посторонние вопросы во время настройки до завершения текущего шага — мягко вернуть к настройке.
 - ❌ Выдумывать содержание аудио без транскрипции (`ideya-sozdavat-konspekty-urokov-po`) — если STT недоступен, честно сказать.
 - ❌ Считать веса/план/статистику в голове — только `scripts/*.mjs` (см. «Детерминированные скрипты»).
+- ❌ Ронять утренний бриф из-за погоды — при сбое сети строку погоды молча пропустить.
 
 ---
 

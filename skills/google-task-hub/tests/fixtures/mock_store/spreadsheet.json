@@ -1,0 +1,60 @@
+{
+  "sheets": {
+    "Tasks": [
+      [
+        "task_id",
+        "google_task_id",
+        "google_list_id",
+        "name",
+        "category",
+        "weight",
+        "deadline",
+        "status",
+        "progress",
+        "actual_duration",
+        "estimated_duration",
+        "task_type",
+        "checkpoints",
+        "calendar_deadline_event_id",
+        "closed_at",
+        "updated_at"
+      ]
+    ],
+    "Dashboard Short": [
+      [
+        "# Dashboard Short"
+      ],
+      [],
+      [
+        "## Сегодня"
+      ]
+    ],
+    "Dashboard Long": [
+      [
+        "# Dashboard Long"
+      ],
+      [],
+      [
+        "## Долговременные задачи"
+      ]
+    ],
+    "CheckpointLog": [
+      [
+        "timestamp",
+        "task_id",
+        "target_progress",
+        "actual_progress",
+        "status"
+      ]
+    ],
+    "DailyLog": [
+      [
+        "date",
+        "tasks_done",
+        "hours_spent",
+        "weight_done",
+        "top_categories"
+      ]
+    ]
+  }
+}

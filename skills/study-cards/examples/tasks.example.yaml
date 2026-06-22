@@ -1,0 +1,72 @@
+tasks:
+  - id: 1
+    name: "Теория: методы решения задач 12–15"
+    category: "ЕГЭ математика профиль"
+    weight: 5
+    deadline: 2026-07-05T15:00:00+03:00
+    status: done
+    progress: 100
+    actual_duration: 540
+    estimated_duration: 540
+    task_type: long
+    closed_at: 2026-06-30T15:30:00+03:00
+
+  - id: 2
+    name: "Практика: 5 задач 16–17 с полным разбором"
+    category: "ЕГЭ математика профиль"
+    weight: 5
+    deadline: 2026-07-10T19:00:00+03:00
+    status: in_progress
+    progress: 60
+    actual_duration: 320
+    estimated_duration: 540
+    task_type: long
+
+  - id: 3
+    name: "Сложные: 3 задачи 18 + проверка"
+    category: "ЕГЭ математика профиль"
+    weight: 7
+    deadline: 2026-07-15T19:00:00+03:00
+    status: planned
+    progress: 0
+    actual_duration: null
+    estimated_duration: 720
+    task_type: long
+
+  - id: 4
+    name: "Пробник 1 — полный 12–18, тайминг"
+    category: "ЕГЭ математика профиль"
+    weight: 8
+    deadline: 2026-07-13T19:00:00+03:00
+    status: planned
+    progress: 0
+    actual_duration: null
+    estimated_duration: 235
+    task_type: short
+
+  - id: 5
+    name: "Оплатить курс по ML"
+    category: "Лично"
+    weight: 2
+    deadline: 2026-06-20T12:00:00+03:00
+    status: done
+    progress: 100
+    actual_duration: 15
+    task_type: short
+    closed_at: 2026-06-19T10:00:00+03:00
+
+  - id: 6
+    name: "Подготовить презентацию Q3"
+    category: "Работа"
+    weight: 6
+    deadline: 2026-06-30T18:00:00+03:00
+    status: in_progress
+    progress: 40
+    actual_duration: 180
+    estimated_duration: 360
+    task_type: short
+
+meta:
+  work_start: "10:00"
+  work_end: "19:00"
+  updated_at: 2026-06-22T13:00:00+03:00

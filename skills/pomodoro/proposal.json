@@ -1,0 +1,57 @@
+﻿{
+    "schema":  "openclaw.skill-workshop.proposal.v1",
+    "id":  "pomodoro-20260622-0e7298eb4a",
+    "kind":  "create",
+    "status":  "applied",
+    "title":  "Create pomodoro",
+    "description":  "Telegram Pomodoro technique timer with classic/long/extended/short variants and custom user-supplied durations, phase-transition notifications, automatic work-time statistics accumulation into a durable stats.json file, do-not-disturb mode during active sessions, proactive once-per-day suggestions when the user falls behind on their plan, and crash-safe session state. Notification text uses the word \u0027помодоро\u0027 (no tomato emoji) for branding.",
+    "createdAt":  "2026-06-22T10:00:00.000Z",
+    "updatedAt":  "2026-06-22T14:00:00.000Z",
+    "createdBy":  "skill-workshop",
+    "origin":  {
+                   "agentId":  "code-writer",
+                   "sessionKey":  "agent:code-writer:dashboard:3c8cfcbf-842a-4332-aabf-cd2f0b51bc2a",
+                   "runId":  "eff1cc4a-96a7-4652-abba-dfb1e2cdd9bd",
+                   "messageId":  "eff1cc4a-96a7-4652-abba-dfb1e2cdd9bd"
+               },
+    "proposedVersion":  "v6",
+    "draftFile":  "PROPOSAL.md",
+    "draftHash":  "61904D7F5CF2C31BC69C47331FABFE9854389D4761C279EAB69781E6D5B04748",
+    "target":  {
+                   "skillName":  "pomodoro",
+                   "skillKey":  "pomodoro",
+                   "skillDir":  "skills/pomodoro",
+                   "skillFile":  "skills/pomodoro/SKILL.md",
+                   "source":  "openclaw-workspace"
+               },
+    "scan":  {
+                 "state":  "clean",
+                 "scannedAt":  "2026-06-22T10:48:00.000Z",
+                 "critical":  0,
+                 "warn":  0,
+                 "info":  0,
+                 "findings":  [
+
+                              ]
+             },
+    "supportFiles":  [
+                         {
+                             "path":  "references/data-schema.md",
+                             "sizeBytes":  9122,
+                             "hash":  "40ABBD29D76890DD28BCAB9FDA912FB70231A3E48840A3CB40FDF14DEC1FC382"
+                         },
+                         {
+                             "path":  "references/message-templates.md",
+                             "sizeBytes":  6269,
+                             "hash":  "3068AFBA2988EFC3DCAFA06A2368D2372AAB4BAB7FA462DC4748B92CE1F4820C"
+                         },
+                         {
+                             "path":  "references/tg-delivery.md",
+                             "sizeBytes":  2094,
+                             "hash":  "F8090312BE24382A86273AA253ACA09B645960105905C32FC6847C37A684A302"
+                         }
+                     ],
+    "goal":  "Provide a Telegram-delivered Pomodoro technique timer with classic/long/short variants, automatic phase transitions, persistent state across restarts, and quiet-hours-aware notifications.",
+    "evidence":  "Requirements captured in chat: timer in TG with variants (classic 25/5, long 50/10, extended 100/20 = 1h40m/20m for deep-focus, short 15/3) plus user-defined custom durations via \u0027/pomodoro start custom \u003cw\u003e \u003cb\u003e\u0027 or \u0027/pomodoro start \u003cw\u003e/\u003cb\u003e\u0027 shorthand (bounds 1-240 / 1-60 min), cycle-based long break every 4 cycles, slash commands (start/status/skip/stop/stats and inline buttons), crash-safe state file, do-not-disturb filter that suppresses non-pomodoro messages while a session is active, a Telegram dialog warm-up check on first start (user must send /start once before bot messages deliver), a proactive suggestion flow that nudges the user to try a pomodoro when they are behind on their plan -- hard-capped at 1 suggestion per local calendar day, suppressed during active sessions and quiet hours, with its own durable suggestions.json state file, automatic accumulation of every work block (full or partial) into a durable stats.json with per-date and lifetime counters (credit rule \u0027actual_elapsed_capped\u0027 by default -- partial credit on skip/stop, full credit on normal completion and drift recovery), \u0027/pomodoro stats\u0027 command to query today\u0027s and lifetime totals, and a per-day stats audit log for forensic reconstruction. Notification branding uses the word \u0027помодоро\u0027 (lowercase) instead of the tomato emoji per user preference. Mirroring existing goal-checkin-notifier structure (Telegram delivery, message action contract, proposal.json shape) for consistency.",
+    "appliedAt":  "2026-06-22T14:00:00.000Z"
+}

@@ -7,7 +7,7 @@ status_source: agent-generated-2026-06-18 (per karim's request)
 
 # Temporal Knowledge Graph — temporal-kg
 
-**Use when:** нужно понять не «что я знаю по физике», а «когда я последний раз трогал тему X, что предшествовало, что было после, какие были ошибки в этот период». Линейный `progress.md` для этого не подходит.
+**Use when:** нужно понять не «что я знаю по физике», а «когда я последний раз трогал тему X, что предшествовало, что было после, какие были ошибки в этот период». Линейный `progress.md` для этого не подходит. Требует `setup_status: complete`. Это **продвинутый/опциональный** скилл — включается, когда у пользователя накопилась история; для базовой работы достаточно `progress.md` + `spaced-repetition`.
 
 **Don't use when:**
 - Нужен простой список задач → `task-tracker`
@@ -43,14 +43,14 @@ status_source: agent-generated-2026-06-18 (per karim's request)
 
 Один файл на «срез» или один большой JSONL. Прагматично: **JSONL**, аппенд-only, по строке на событие.
 
-`memory/temporal-kg/events.jsonl`:
+`users/<user_key>/temporal-kg/events.jsonl`:
 ```json
 {"id": "e_001", "ts": "2026-06-15T19:30:00+03:00", "type": "solve", "topic": "электродинамика/закон-кулона", "problem_id": "p_42", "result": "fail", "error_type": "знак заряда"}
 {"id": "e_002", "ts": "2026-06-17T20:15:00+03:00", "type": "solve", "topic": "электродинамика/закон-кулона", "problem_id": "p_42", "result": "success", "duration_min": 12}
 {"id": "e_003", "ts": "2026-06-17T20:30:00+03:00", "type": "reflection", "linked_event": "e_001", "cause": "не понял знак заряда", "adaptation": "пересмотрел §X учебника"}
 ```
 
-**Рёбра** — отдельный файл `memory/temporal-kg/edges.jsonl`:
+**Рёбра** — отдельный файл `users/<user_key>/temporal-kg/edges.jsonl`:
 ```json
 {"from": "e_002", "to": "e_001", "type": "resolves", "ts": "2026-06-17T20:30:00"}
 {"from": "e_003", "to": "e_001", "type": "caused_by", "ts": "2026-06-17T20:30:00"}
@@ -58,7 +58,7 @@ status_source: agent-generated-2026-06-18 (per karim's request)
 ```
 
 **Topic-индекс** — для быстрого поиска по теме:
-`memory/temporal-kg/topic-index.json`:
+`users/<user_key>/temporal-kg/topic-index.json`:
 ```json
 {
   "электродинамика/закон-кулона": {
@@ -80,7 +80,7 @@ status_source: agent-generated-2026-06-18 (per karim's request)
 - `daily-study-checkin` → `checkin(date, mood, energy, topics)`
 - `study-plan` при достижении milestone → `milestone(topic, target, actual, status)`
 - `reflection-loop` → `reflection(linked_event, cause, adaptation)`
-- `goal-planned` при drift → `drift(topic, days_late, reason)`
+- `study-plan` при drift/отставании → `drift(topic, days_late, reason)`
 
 API:
 ```python
@@ -116,7 +116,7 @@ temporal_kg.update_topic_index(topic, event_id)
 3. Если `days_since_last > review_interval` (из `spaced-repetition`) — тема due.
 
 ### 5. Чтение: «граф связей темы X»
-Визуализация через `diagram-maker` (Excalidraw/SVG):
+Визуализация (опционально, если доступен инструмент диаграмм — Excalidraw/SVG):
 - Узлы — события (тип, дата, результат)
 - Рёбра — `preceded_by` / `caused_by` / `resolves`
 - Цвета: success=зелёный, fail=красный, reflection=жёлтый
@@ -128,11 +128,9 @@ temporal_kg.update_topic_index(topic, event_id)
 | `daily-study-checkin` | `checkin` события | — |
 | `task-triage` | `solve` события | — |
 | `study-plan` | `milestone` события | `drift` для адаптации |
-| `goal-planned` | `drift` события | timeline цели |
 | `spaced-repetition` | — | `last_seen` для расчёта due |
 | `reflection-loop` | `reflection` события | предыдущие `drift` для паттерна |
-| `adaptive-weights` | — | `drift` события для `stall_penalty` |
-| `critical-review` | — | граф для аудита «каша в стыковке» |
+| `task-weighting` | — | `drift_count` для буста приоритета слабых тем |
 
 ## Анти-паттерны
 
@@ -154,10 +152,9 @@ temporal_kg.update_topic_index(topic, event_id)
 ## Связанные навыки
 
 - `spaced-repetition` — потребитель `last_seen`
-- `adaptive-weights` — потребитель `drift_count`
+- `task-weighting` — потребитель `drift_count`
 - `reflection-loop` — эмиттер `reflection` событий
-- `diagram-maker` — визуализация графа
-- `critical-review` — потребитель для аудита
+- `daily-study-checkin` — эмиттер `checkin` событий
 
 ## Пример запроса (что увидит пользователь)
 

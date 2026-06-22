@@ -9,22 +9,35 @@
 ## Часть 1. Разовая настройка приложения (делает владелец, ~10 минут)
 
 Нужна **одна** учётка приложения OAuth на весь проект — её используют все пользователи.
+Везде вверху страницы убедись, что выбран **тот же проект**.
 
-1. Зайти в **Google Cloud Console** → создать проект (или выбрать существующий).
-2. **APIs & Services → Library** → включить **Google Calendar API**.
-3. **APIs & Services → OAuth consent screen**:
-   - User type: **External**.
-   - Заполнить название/почту поддержки.
-   - **Scopes:** добавить `https://www.googleapis.com/auth/calendar.events`.
-   - **Test users:** пока приложение не «опубликовано», добавить туда e-mail каждого, кто будет подключаться (или нажать **Publish app** для открытого доступа).
-4. **APIs & Services → Credentials → Create credentials → OAuth client ID**:
-   - Application type: **TV and Limited Input devices**.
-   - Скопировать **Client ID** и **Client secret**.
+### Шаг 1 — создать проект
+1. Открой https://console.cloud.google.com/projectcreate
+2. **Project name:** `golden-hour-bot` → **Create**.
+3. Подожди ~10 сек и выбери проект в выпадашке вверху.
 
-> Тип «TV and Limited Input devices» обязателен — именно он даёт device flow (ссылка + код, без браузерного редиректа). Подходит для пользователей в Telegram.
+### Шаг 2 — включить Calendar API
+1. Открой https://console.cloud.google.com/apis/library/calendar-json.googleapis.com
+2. Нажми **Enable**.
 
-### Куда положить ключи
-В `~/.openclaw/secrets.json` (Windows: `%USERPROFILE%\.openclaw\secrets.json`) добавить блок:
+### Шаг 3 — настроить экран согласия (Google Auth Platform)
+1. Открой https://console.cloud.google.com/auth/overview → **Get started**.
+2. **App name:** `Золотой час`; **User support email:** твоя почта → Next.
+3. **Audience:** выбери **External** → Next.
+4. **Contact information:** твоя почта → Next → согласиться → **Create**.
+5. Слева **Audience**:
+   - **Test users → Add users** → добавь свой Gmail (и всех, кто будет подключаться).
+   - ⚠️ В статусе **Testing** refresh-токен живёт только **7 дней**. Чтобы бот работал постоянно — нажми **Publish app** (Production). Появится плашка «приложение не верифицировано» — для личного использования это нормально, жми «всё равно продолжить».
+
+### Шаг 4 — создать OAuth-клиент
+1. Открой https://console.cloud.google.com/apis/credentials
+2. **Create credentials → OAuth client ID**.
+3. **Application type:** `TV and Limited Input devices` (обязательно — он даёт вход по ссылке+коду без редиректа).
+4. **Name:** `golden-hour` → **Create**.
+5. Скопируй **Client ID** и **Client secret** (можно скачать JSON).
+
+### Шаг 5 — вписать ключи
+В `~/.openclaw/secrets.json` (Windows: `%USERPROFILE%\.openclaw\secrets.json`) добавь блок (если файл уже есть — добавь поле `google` рядом с остальными, не ломая JSON):
 
 ```json
 {
@@ -37,12 +50,14 @@
 
 (Альтернатива — переменные окружения `GCAL_CLIENT_ID` / `GCAL_CLIENT_SECRET`.)
 
-Проверка:
+### Шаг 6 — проверить
 ```powershell
 cd "$env:USERPROFILE\.openclaw\workspaces\golden-hour"
 node scripts/gcal.mjs status --user local
 ```
-Должно вернуть `{"ok":true,"connected":false}` (без ошибки про missing creds).
+Должно вернуть `{"ok":true,"connected":false}` (без ошибки про missing creds) — значит ключи на месте.
+
+> Если на шаге 6 видишь `missing Google client id/secret` — проверь, что блок `google` реально в `secrets.json` и JSON валиден.
 
 ---
 

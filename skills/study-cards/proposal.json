@@ -1,0 +1,35 @@
+{
+  "schema": "openclaw.skill-workshop.proposal.v1",
+  "id": "study-cards-20260622",
+  "kind": "create",
+  "status": "applied",
+  "title": "Create study-cards",
+  "description": "PNG-карточки 1080×1440 для учебного плана и статистики; light/dark, кириллица, zero npm deps.",
+  "createdAt": "2026-06-22T12:00:00.000Z",
+  "updatedAt": "2026-06-22T12:00:00.000Z",
+  "createdBy": "cursor-agent",
+  "target": {
+    "skillName": "study-cards",
+    "skillKey": "study-cards",
+    "skillDir": "skills/study-cards",
+    "skillFile": "skills/study-cards/SKILL.md",
+    "source": "openclaw-workspace"
+  },
+  "scan": {
+    "state": "clean",
+    "critical": 0,
+    "warn": 0,
+    "info": 0,
+    "findings": []
+  },
+  "supportFiles": [
+    { "path": "render.js" },
+    { "path": "render-stats.js" },
+    { "path": "README.md" },
+    { "path": "LICENSE" },
+    { "path": "examples/plan.example.json" },
+    { "path": "examples/tasks.example.yaml" }
+  ],
+  "goal": "Визуальный слой для study-plan и task-tracker: PNG-карточки для Telegram.",
+  "appliedAt": "2026-06-22T12:00:00.000Z"
+}

@@ -311,7 +311,7 @@ weight = clamp(1, 10,
 - capability: 🟢 self
 - status: done
 - tools: write
-- artifact: workspace/draft-theses.md
+- artifact: users/<user_key>/draft-theses.md
 - duration: ~30 сек
 - result: 3 тезиса сохранены в draft-theses.md
 ```
