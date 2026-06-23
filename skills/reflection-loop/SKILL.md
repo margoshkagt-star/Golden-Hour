@@ -83,6 +83,16 @@ status_source: agent-generated-2026-06-18 (per karim's request)
 - **Урок:** не оценивать тему по «давай попробую», сначала прикинуть объём
 ```
 
+### 5b. Запись в temporal-kg (обязательно после progress.md)
+```bash
+node scripts/temporal-kg.mjs reflection --user <user_key> \
+  --topic "<тема>" --what "<что>" --causes "<причины>" --adaptation "<что меняем>"
+```
+При просрочке — дополнительно:
+```bash
+node scripts/temporal-kg.mjs drift --user <user_key> --topic "<тема>" --days-late N --reason "<кратко>"
+```
+
 ### 6. Forward commit
 - **Один** новый реалистичный micro-commit на ближайшие 2 дня (не «доделать всё»).
 - Срок: пересмотр через 48 ч.

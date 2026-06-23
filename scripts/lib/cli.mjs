@@ -50,6 +50,14 @@ export function userDir(userKey) {
   return path.join(WORKSPACE, "users", userKey);
 }
 
+/** Relative path from workspace root (POSIX slashes) for agent JSON — not for user chat. */
+export function relWorkspacePath(absPath) {
+  if (!absPath) return null;
+  const rel = path.relative(WORKSPACE, absPath);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) return null;
+  return rel.split(path.sep).join("/");
+}
+
 export function requireUser(opts) {
   const user = opts.user || opts.u;
   if (!user) die("missing --user <user_key>");

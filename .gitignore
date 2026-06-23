@@ -3,6 +3,10 @@ users/*
 !users/_example/
 !users/_example/**
 
+# Командные таски (приватные данные команд)
+data/teams/*
+!data/teams/.gitkeep
+
 memory/*
 !memory/*.example.md
 !memory/task-categories.example.md
@@ -39,6 +43,9 @@ material-cache-20260618-*/
 reflection-loop-20260618-*/
 spaced-repetition-20260618-*/
 temporal-kg-20260618-*/
+rita-*/
+.clawhub/
+.test-table/
 
 # OS
 .DS_Store

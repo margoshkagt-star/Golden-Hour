@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const { parseArgs, ensureDir, resolveEdgeBin, parseThemes } = require('./lib/cli');
+const { PALETTE } = require('./lib/palette');
 
 const BASE = __dirname;
 const args = parseArgs(process.argv);
@@ -89,10 +90,39 @@ function daysUntil(iso) {
   return Math.round((d - now) / (1000 * 60 * 60 * 24));
 }
 
-const PALETTE = {
-  light: { bg: '#FAFAFA', cardBg: 'white', accent: '#1565C0', title: '#0D47A1', subtitle: '#37474F', text: '#263238', muted: '#607D8B', good: '#2E7D32', warn: '#E65100', bad: '#C62828', shadow: '0 4px 18px rgba(0,0,0,0.08)' },
-  dark:  { bg: '#0E1116', cardBg: '#1A1F26', accent: '#90CAF9', title: '#E3F2FD', subtitle: '#B0BEC5', text: '#ECEFF1', muted: '#78909C', good: '#81C784', warn: '#FFB74D', bad: '#EF5350', shadow: '0 4px 18px rgba(0,0,0,0.5)' },
+
+const PALETTE_STATS = {
+  light: {
+    bg: PALETTE.light.bg,
+    cardBg: PALETTE.light.cardBg,
+    accent: PALETTE.light.accent,
+    title: PALETTE.light.title,
+    subtitle: PALETTE.light.subtitle,
+    text: PALETTE.light.text,
+    muted: PALETTE.light.muted,
+    good: PALETTE.light.good,
+    warn: PALETTE.light.warn,
+    bad: PALETTE.light.bad,
+    shadow: PALETTE.light.shadow,
+  },
+  dark: {
+    bg: PALETTE.dark.bg,
+    cardBg: PALETTE.dark.cardBg,
+    accent: PALETTE.dark.accent,
+    title: PALETTE.dark.title,
+    subtitle: PALETTE.dark.subtitle,
+    text: PALETTE.dark.text,
+    muted: PALETTE.dark.muted,
+    good: PALETTE.dark.good,
+    warn: PALETTE.dark.warn,
+    bad: PALETTE.dark.bad,
+    shadow: PALETTE.dark.shadow,
+  },
 };
+
+function paletteFor(theme) {
+  return PALETTE_STATS[theme] || PALETTE_STATS.dark;
+}
 
 function compute(tasks) {
   const total = tasks.length;
@@ -138,7 +168,7 @@ function bar(pct, color, width = 320) {
 }
 
 function coverHtml(s, theme) {
-  const p = PALETTE[theme];
+  const p = paletteFor(theme);
   const headline = s.total === 0 ? 'Трекер пуст 🗒️' :
                    s.progressWeight === 0 ? 'Старт дан 🚀' :
                    s.progressWeight < 30 ? 'Старт дан 🚀' :
@@ -185,7 +215,7 @@ function coverHtml(s, theme) {
 }
 
 function deadlinesHtml(s, theme) {
-  const p = PALETTE[theme];
+  const p = paletteFor(theme);
   const rows = s.deadlines.length === 0
     ? `<div style="background:${p.cardBg};border-radius:24px;padding:48px;text-align:center;font-size:34px;color:${p.muted};">Нет активных дедлайнов 🎉</div>`
     : s.deadlines.map(t => {
@@ -230,7 +260,7 @@ function deadlinesHtml(s, theme) {
 }
 
 function categoriesHtml(s, theme) {
-  const p = PALETTE[theme];
+  const p = paletteFor(theme);
   const cats = Object.entries(s.cats).sort((a, b) => b[1].weight - a[1].weight);
   const rows = cats.length === 0
     ? `<div style="background:${p.cardBg};border-radius:24px;padding:48px;text-align:center;font-size:34px;color:${p.muted};">Нет задач</div>`

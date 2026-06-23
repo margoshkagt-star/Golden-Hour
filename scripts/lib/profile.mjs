@@ -114,6 +114,12 @@ export function getSetupStatus(profile) {
   return profile?.setup_status || profile?.["setup_status"] || "new";
 }
 
+/** PNG theme for study-plan-cards / table-cards: light | dark */
+/** @deprecated Use CARD_THEME from card-render.mjs — single built-in dark style. */
+export function getCardTheme(_profile) {
+  return "dark";
+}
+
 export function getTopicsFromProfile(profile) {
   const purpose = profile.purpose;
   if (purpose === "exam") {

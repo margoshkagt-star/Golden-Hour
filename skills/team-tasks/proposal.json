@@ -1,0 +1,23 @@
+{
+  "schema": "openclaw.skill-workshop.proposal.v1",
+  "id": "team-tasks-20260617-team001",
+  "kind": "create",
+  "status": "applied",
+  "title": "Create team-tasks",
+  "description": "Оркестратор командной работы: команды, инвайты, общие таски, submit/approve, уведомления.",
+  "createdAt": "2026-06-17T12:00:00.000Z",
+  "updatedAt": "2026-06-17T12:00:00.000Z",
+  "createdBy": "skill-workshop",
+  "proposedVersion": "v1",
+  "draftFile": "SKILL.md",
+  "target": {
+    "skillName": "team-tasks",
+    "skillKey": "team-tasks",
+    "skillDir": "skills/team-tasks",
+    "skillFile": "skills/team-tasks/SKILL.md"
+  },
+  "scan": { "state": "clean", "critical": 0, "warn": 0, "info": 0, "findings": [] },
+  "goal": "Несколько людей работают над общей целью: собрать команду, разделить таски, трекать кто что взял/сдал, уведомлять всех.",
+  "evidence": "Спецификация командных тасков: два слоя (команды + таски), lifecycle planned→done, data/teams/<id>/, users/<key>/teams.json.",
+  "appliedAt": "2026-06-17T12:00:00.000Z"
+}

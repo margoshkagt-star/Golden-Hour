@@ -17,6 +17,7 @@ import {
 } from "./lib/cli.mjs";
 import { loadProfile, getSetupStatus } from "./lib/profile.mjs";
 import { resolveToday, daysBetween } from "./lib/dates.mjs";
+import { kgPeriodStats } from "./lib/temporal-kg-core.mjs";
 
 const PERIOD_DAYS = { week: 7, month: 30, year: 365, all: null };
 
@@ -109,6 +110,13 @@ const longTasks = tasks.filter(
 );
 
 const planStats = aggregatePlans(path.join(dir, "plans"), since);
+const pomodoroStats = readJson(path.join(dir, "pomodoro", "stats.json"), null);
+let pomodoroMinutes = 0;
+if (pomodoroStats?.total_work_minutes_by_date) {
+  for (const [date, min] of Object.entries(pomodoroStats.total_work_minutes_by_date)) {
+    if (!since || date >= since) pomodoroMinutes += min;
+  }
+}
 const focusDir = path.join(dir, "focus");
 let focusMinutes = 0;
 if (fs.existsSync(focusDir)) {
@@ -119,8 +127,14 @@ if (fs.existsSync(focusDir)) {
   }
 }
 
-const hoursActual = Math.round((planStats.minutes + focusMinutes) / 60 * 10) / 10;
+const hoursActual = Math.round((planStats.minutes + focusMinutes + pomodoroMinutes) / 60 * 10) / 10;
+const kgStats = kgPeriodStats(path.join(dir, "temporal-kg"), since, today);
 const weightPct = weightProgress(tasks);
+
+const kgPart =
+  kgStats.event_count > 0
+    ? `, ${kgStats.event_count} событий в графе (${kgStats.topics_active_in_period} тем)`
+    : "";
 
 out({
   user_key: userKey,
@@ -134,6 +148,8 @@ out({
   },
   plans: planStats,
   focus_minutes: focusMinutes,
+  pomodoro_minutes: pomodoroMinutes,
+  temporal_kg: kgStats,
   hours_actual: hoursActual,
-  summary: `За ${period}: закрыто ${planStats.done}/${planStats.planned} слотов плана, ~${hoursActual} ч.`,
+  summary: `За ${period}: закрыто ${planStats.done}/${planStats.planned} слотов плана, ~${hoursActual} ч${kgPart}.`,
 });

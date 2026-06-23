@@ -21,6 +21,10 @@ Sends reminders and check-ins to a Telegram bot for the user's daily/weekly goal
    - Free text → log to the daily journal, let the user keep talking.
 6. **Escalation** for evening check-in: if no response in 30 min, one retry. If still nothing, log "day not reviewed" and stop for the day.
 
+## Team task notifications (`team-tasks`)
+
+When `team-tasks.mjs` returns `notifications` with `recipients[]`, deliver each `message` to the corresponding user's Telegram chat via the same message action. Respect `exclude_user_key` if present (don't ping the actor twice). Team notifications are **not** throttled by `max_pings_per_day` — they are event-driven (invite, take, submit, approve, etc.).
+
 ## Configuration
 
 - `morning_brief_time` — default `09:00`

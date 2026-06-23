@@ -1,7 +1,7 @@
 // Core daily-plan builder (shared by daily-plan.mjs and morning-plan.mjs).
 
 import path from "node:path";
-import { readText, readJson, writeJson } from "./cli.mjs";
+import { readText, readJson, writeJson, relWorkspacePath } from "./cli.mjs";
 import { loadProfile, getSetupStatus } from "./profile.mjs";
 import { getCurrentPlanTopic } from "./plan-parse.mjs";
 import { weightTopic, getDailyBudget } from "./task-weighting.mjs";
@@ -122,7 +122,7 @@ export function buildDailyPlan(userKey, userDirPath, date, { dryRun = false } = 
   return {
     ok: true,
     user_key: userKey,
-    path: outPath,
+    path: relWorkspacePath(outPath),
     plan,
     summary,
     dry_run: dryRun,

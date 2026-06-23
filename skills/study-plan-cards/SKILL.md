@@ -162,6 +162,14 @@ daily-plan / study-plan ────┘
 - Кириллица: HTML+Edge, не AI image-gen
 - Telegram: альбом ≤ 10 фото
 
+## Таблицы в Telegram (`table-cards`)
+
+Любая markdown-таблица в ответе → **не текстом**, а PNG через тот же движок `study-cards`:
+
+```bash
+node scripts/table-cards.mjs --user <user_key> --title "План на сегодня" --text "| col | ..."
+```
+
 ## См. также
 
 - **`study-cards/SKILL.md`** — CLI движка, форматы, manifest JSON
