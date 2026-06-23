@@ -1,0 +1,18 @@
+{
+  "_meta": {
+    "version": 2,
+    "description": "Ручной реестр user_id → handle. Бот автоматически резолвит handle через username (Telegram @), first_name и fallback. Этот файл — основной источник правды для display-имени в /ideas, /info, /classify.",
+    "telegram_bot": "@YOUR_BOT_USERNAME",
+    "owner_chat_id": 0
+  },
+  "members": [
+    {
+      "user_id": 0,
+      "username": "YOUR_TELEGRAM_USERNAME",
+      "first_name": "Your Name",
+      "last_name": null,
+      "role": "owner",
+      "notes": "Замени на свои реальные данные. user_id бот проставит сам при первом /start."
+    }
+  ]
+}

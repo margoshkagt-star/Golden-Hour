@@ -1,0 +1,56 @@
+{
+  "owner": {
+    "username": "beatusx",
+    "chat_id": 1038917447,
+    "user_id": 1038917447,
+    "first_name": "Beatus"
+  },
+  "team": [
+    "svirepymedved",
+    "Sayu33",
+    "aabarabanov",
+    "vlasov_andrey_spb",
+    "IgnaKate",
+    "jekajops",
+    "das_quatschfass239"
+  ],
+  "commands": {
+    "owner_only": [
+      "tag",
+      "untag",
+      "tags",
+      "remind",
+      "source",
+      "related",
+      "find",
+      "tasks",
+      "stats",
+      "reindex",
+      "rescan"
+    ],
+    "team_read": [
+      "today",
+      "week",
+      "month",
+      "digest",
+      "search",
+      "ideas",
+      "recent",
+      "info"
+    ]
+  },
+  "asr": {
+    "server_side": false,
+    "client_tool": "wispr_flow",
+    "note": "Server-side ASR отключён. Команда диктует в Telegram-поле через Wispr Flow (1.5.789) на своём устройстве. Голосовые .ogg, пришедшие в бот, сохраняются с duration, без транскрипта."
+  },
+  "digest": {
+    "periodic": false,
+    "interval_hours": 3,
+    "last_digest_at": "2026-06-18T16:49:39+03:00",
+    "last_digest_message_count": 30
+  },
+  "inbox_dir": "memory/inbox",
+  "auto_skill_from_ideas": true,
+  "started_at": "2026-06-23T02:14:30+03:00"
+}

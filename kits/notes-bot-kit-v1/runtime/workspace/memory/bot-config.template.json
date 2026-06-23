@@ -1,0 +1,52 @@
+{
+  "_comment": "Скопируй в memory/bot-config.json и заполни owner/team под свою команду. См. INSTALL.md.",
+  "owner": {
+    "username": "YOUR_TELEGRAM_USERNAME",
+    "chat_id": 0,
+    "user_id": 0,
+    "first_name": "Your Name"
+  },
+  "team": [
+    "team_member_1",
+    "team_member_2"
+  ],
+  "commands": {
+    "owner_only": [
+      "tag",
+      "untag",
+      "tags",
+      "remind",
+      "source",
+      "related",
+      "find",
+      "tasks",
+      "stats",
+      "reindex",
+      "rescan"
+    ],
+    "team_read": [
+      "today",
+      "week",
+      "month",
+      "digest",
+      "search",
+      "ideas",
+      "recent",
+      "info"
+    ]
+  },
+  "asr": {
+    "server_side": false,
+    "client_tool": "wispr_flow",
+    "note": "Server-side ASR отключён по умолчанию. Голосовые .ogg сохраняются с duration, без транскрипта. Чтобы включить серверную расшифровку — установи skill voice-transcribe и переключи флаг."
+  },
+  "digest": {
+    "periodic": false,
+    "interval_hours": 3,
+    "last_digest_at": null,
+    "last_digest_message_count": 0
+  },
+  "inbox_dir": "memory/inbox",
+  "auto_skill_from_ideas": true,
+  "started_at": null
+}

@@ -1,0 +1,91 @@
+{
+  "_meta": {
+    "version": 2,
+    "description": "Единый реестр участников Telegram-бота. Используется resolve_handle()/resolve_name() для отображения авторов в /ideas, /info, /classify, дайджестах. Если user_id из записи нашёлся тут — данные берутся отсюда (актуальные), иначе fallback на поля записи (username/first_name из notes.jsonl). display-поле убрано (v2): везде показывается @username.",
+    "updated_at": "2026-06-18T12:02:00+03:00",
+    "telegram_bot": "@felpik_notes_bot",
+    "owner_chat_id": 1038917447
+  },
+  "members": [
+    {
+      "user_id": 1038917447,
+      "username": "beatusx",
+      "first_name": "Beatus",
+      "last_name": null,
+      "role": "owner",
+      "notes": "Хозяин. Telegram first_name=Beatus; в /ideas и /info отображается как @beatusx."
+    },
+    {
+      "user_id": 5649925712,
+      "username": "svirepymedved",
+      "first_name": "Михаил",
+      "last_name": null,
+      "role": "team",
+      "notes": null
+    },
+    {
+      "user_id": 501775529,
+      "username": "aabarabanov",
+      "first_name": "Aleksey",
+      "last_name": "Barabanov",
+      "role": "team",
+      "notes": null
+    },
+    {
+      "user_id": 1317020734,
+      "username": "Sayu33",
+      "first_name": "Sayu",
+      "last_name": null,
+      "role": "team",
+      "notes": null
+    },
+    {
+      "user_id": 2,
+      "username": "maria",
+      "first_name": "Мария",
+      "last_name": null,
+      "role": "synthetic",
+      "notes": "Синтетическая запись (seed для тестов), user_id=2 не настоящий Telegram ID."
+    },
+    {
+      "user_id": 3,
+      "username": "ivan",
+      "first_name": "Иван",
+      "last_name": null,
+      "role": "synthetic",
+      "notes": "Синтетическая запись (seed для тестов), user_id=3 не настоящий Telegram ID."
+    },
+    {
+      "user_id": null,
+      "username": "vlasov_andrey_spb",
+      "first_name": null,
+      "last_name": null,
+      "role": "team",
+      "notes": "Дописать реальный user_id когда Карим получит от него сообщение."
+    },
+    {
+      "user_id": null,
+      "username": "IgnaKate",
+      "first_name": null,
+      "last_name": null,
+      "role": "team",
+      "notes": "Дописать когда будет первое сообщение от него."
+    },
+    {
+      "user_id": null,
+      "username": "jekajops",
+      "first_name": null,
+      "last_name": null,
+      "role": "team",
+      "notes": "Дописать когда будет первое сообщение от него."
+    },
+    {
+      "user_id": null,
+      "username": "das_quatschfass239",
+      "first_name": null,
+      "last_name": null,
+      "role": "team",
+      "notes": "Дописать когда будет первое сообщение от него."
+    }
+  ]
+}
