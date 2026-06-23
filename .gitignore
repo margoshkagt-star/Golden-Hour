@@ -3,6 +3,10 @@ users/*
 !users/_example/
 !users/_example/**
 
+data/teams/*
+!data/teams/.gitkeep
+
+
 memory/*
 !memory/*.example.md
 !memory/task-categories.example.md

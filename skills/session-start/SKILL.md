@@ -15,6 +15,11 @@ description: "Первый шаг каждой новой сессии: опре
 
 1. **Определить `user_key`** (см. `user-profile`): Telegram id → `tg-<id>`, иначе `local`/`<channel>-<id>`.
 2. **Проверить `users/<user_key>/profile.md`:**
+3. **Резолв командных инвайтов** (если известен `telegram_id`):
+   ```bash
+   node scripts/team-tasks.mjs invites resolve --user <user_key> --telegram-id <id> [--username @x]
+   ```
+   Если пользователь вступил в команды — сообщить кратко.
 
 ### A. Профиль есть и `setup_status: complete`
 Поприветствовать по имени и **предложить выбор** (не загружать молча):

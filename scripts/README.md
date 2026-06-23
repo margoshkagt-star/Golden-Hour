@@ -29,6 +29,11 @@ node scripts/spaced-repetition.mjs --user tg-5649925712
 # Статистика
 node scripts/longterm-stats.mjs --user tg-5649925712 --period week
 
+# Командные таски
+node scripts/team-tasks.mjs team create --user tg-111 --goal "Q&A сайт" --telegram-id 111
+node scripts/team-tasks.mjs team list --user tg-111
+node scripts/team-tasks.mjs task list --user tg-111 --team team-abc123
+
 # Тесты
 node scripts/run-tests.mjs
 node scripts/morning-plan.mjs --dry-run
@@ -60,6 +65,7 @@ node scripts/agent-qa.mjs --session qa-YYYYMMDD
 | `morning-plan.mjs` | daily-plan (batch) | все `users/*` на сегодня |
 | `spaced-repetition.mjs` | spaced-repetition | due-темы на повтор |
 | `longterm-stats.mjs` | longterm-stats | агрегаты из tasks.yaml и plans/ |
+| `team-tasks.mjs` | team-tasks | команды, инвайты, общие таски |
 | `gcal.mjs` | google-calendar-sync | Google Calendar API |
 | `run-tests.mjs` | — | unit-тесты формул |
 
@@ -74,6 +80,7 @@ node scripts/agent-qa.mjs --session qa-YYYYMMDD
 - `spaced-repetition.mjs` — интервалы повтора
 - `task-templates.mjs` — шаблоны названий задач
 - `study-plan.mjs` — генератор markdown плана
+- `team-tasks.mjs` — командные команды и таски (`data/teams/`)
 
 ## Переменные окружения
 

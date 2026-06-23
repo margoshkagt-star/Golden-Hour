@@ -27,6 +27,7 @@ users/<user_key>/
   progress.md   # дневник чек-инов, streak, закрытые темы
   tasks.md      # активные задачи
   tasks.yaml    # данные трекера (вес/дедлайн/категория) — опционально
+  teams.json    # индекс команд пользователя (team-tasks)
   plans/
     YYYY-MM-DD.json   # дневные планы для напоминаний
 ```
@@ -52,6 +53,12 @@ users/<user_key>/
 node scripts/session-start.mjs --user <user_key>
 ```
 Читай JSON → действуй по `setup_status` и `action`. Не определяй фазу «на глаз».
+
+**Командные инвайты (после session-start, если есть `telegram_id`):**
+```bash
+node scripts/team-tasks.mjs invites resolve --user <user_key> --telegram-id <id> [--username @x]
+```
+Если `accepted.count > 0` — сообщить пользователю, в какие команды вступил.
 
 ### Шаг 0. Определи `user_key` и прочитай `users/<user_key>/profile.md`
 
@@ -160,6 +167,7 @@ node scripts/session-start.mjs --user <user_key>
 | `goal-checkin-notifier` | есть дневной план → утренний бриф, пинги, вечерний чек-ин | читает `users/<user_key>/plans/` |
 | `current-tasks` | «список задач», «добавь/закрой задачу» | `users/<user_key>/tasks.md` |
 | `task-tracker` | «прогресс», «что горит», «итог дня» | `users/<user_key>/tasks.yaml` |
+| `team-tasks` | «команда», «пригласи», «командные задачи», `/team …` | `data/teams/<team_id>/` + `users/<user_key>/teams.json` |
 | `task-triage` | дал список задач → приоритизация/декомпозиция | `users/<user_key>/...` + общий `memory/task-categories.md` |
 | `google-calendar-sync` | «подключи/синхронизируй календарь», авто push после плана + pull на heartbeat | `users/<user_key>/google-calendar.json` |
 
@@ -230,6 +238,7 @@ profile.md (настройка)
 | `morning-plan` (cron) | `node scripts/morning-plan.mjs [--date …] [--dry-run] [--force]` | все активные `users/*` |
 | `spaced-repetition` | `node scripts/spaced-repetition.mjs --user <key> [--date …]` | — |
 | `longterm-stats` | `node scripts/longterm-stats.mjs --user <key> [--period week\|month\|year\|all]` | — |
+| `team-tasks` | `node scripts/team-tasks.mjs <team\|task\|invites> <action> --user <key> …` | `data/teams/<id>/`, `users/<key>/teams.json` |
 | `google-calendar-sync` | `node scripts/gcal.mjs …` | см. ниже |
 
 **Порядок:** dry-run → показать пользователю → без `--dry-run`. Подробности: `scripts/README.md`.

@@ -34,6 +34,13 @@ description: "Показывает пользователю карту всех 
 • «что горит» / «прогресс» — статус и дедлайны
 • «… важнее / менее важно», «… тяжелее / легче» — настройка приоритета и сложности
 
+👥 КОМАНДА (общие цели)
+• «создай команду …» / «мои команды» — командная работа над одной целью
+• «пригласи @… в команду» — инвайт (код на 5 дней)
+• «вступить по коду …» — принять инвайт
+• «добавь командную задачу …» / «беру» / «сдал» / «принято» — lifecycle таски
+• «кто что делает» — доска команды (только если ты в ней)
+
 ⏱ ФОКУС И ДИСЦИПЛИНА
 • «начать 45 / час» — фокус-таймер, в конце похвалю и зачту
 • «чек-ин» / «итог дня» — отметить, что сделал, веду streak
@@ -69,6 +76,6 @@ description: "Показывает пользователю карту всех 
 - Тон — короткий, дружелюбный, мобильный. Эмодзи 🌅 в начале.
 
 ## Связанные навыки
-Это меню — индекс ко всем рабочим скиллам: `study-plan`, `daily-plan`, `daily-balancer`, `task-weighting`, `current-tasks`, `task-triage`, `task-tracker`, `ideya-razbivat-krupnye-zadachi-na`, `ideya-obrabatyvat-povtoryayuschiesya-zad`, `spaced-repetition`, `focus-timer`, `daily-study-checkin`, `goal-checkin-notifier`, `reflection-loop`, `goal-materials`, `material-cache`, `ideya-sozdavat-konspekty-urokov-po`, `longterm-stats`, `temporal-kg`, `google-calendar-sync`, `pokazyvat-prognoz-pogody-na-utrennem`, `organizaciya-povtora-deistvii`.
+Это меню — индекс ко всем рабочим скиллам: `study-plan`, `daily-plan`, `daily-balancer`, `task-weighting`, `current-tasks`, `team-tasks`, `task-triage`, `task-tracker`, `task-decomposition`, `repeatable-habits`, `spaced-repetition`, `focus-timer`, `daily-study-checkin`, `goal-checkin-notifier`, `reflection-loop`, `goal-materials`, `material-cache`, `lesson-notes-from-audio`, `longterm-stats`, `temporal-kg`, `google-calendar-sync`, `pokazyvat-prognoz-pogody`.
 
 > Служебные скиллы (онбординг и распознавание пользователя) в меню не показываются — они работают незаметно: `session-start`, `user-profile`, `hello-intro`, `purpose-select`, `setup-finalize`, `olympiad-grade/subject/self-asses`, `exam-type/subject/topics/self-assess`, `topic-clarify/self-assess`.
