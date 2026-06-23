@@ -1,0 +1,27 @@
+{
+  "cover": {
+    "title": "Фикстура",
+    "subtitle": "Дизайн B · v1",
+    "target": "Smoke-test baseline",
+    "date_from": "01.01",
+    "date_to": "07.01",
+    "deadline": "31.12.2099",
+    "days_total": 7,
+    "hours_per_day": 3,
+    "hours_total": 21,
+    "footer": "Cards baseline fixture"
+  },
+  "weeks": [
+    {
+      "label": "НЕДЕЛЯ 1",
+      "title": "01–07 января",
+      "subtitle": "Короткий subtitle",
+      "footer": "⏱ footer-test",
+      "days": [
+        { "date": "01.01", "weekday": "Пн", "task": "№1", "topic": "Тема 1" },
+        { "date": "02.01", "weekday": "Вт", "task": "№2", "topic": "Длинная тема чтобы проверить перенос строки и long-subtitle", "meta": "⭐3" },
+        { "date": "03.01", "weekday": "Ср", "task": "№3", "topic": "Тема 3" }
+      ]
+    }
+  ]
+}

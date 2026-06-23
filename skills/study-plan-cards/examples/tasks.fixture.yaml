@@ -1,0 +1,61 @@
+tasks:
+  - id: 1
+    name: "Теория: основы"
+    category: "Учёба"
+    weight: 3
+    deadline: 2026-08-01T18:00:00+03:00
+    status: done
+    progress: 100
+    actual_duration: 90
+    task_type: short
+
+  - id: 2
+    name: "Практика: задачи среднего уровня"
+    category: "Учёба"
+    weight: 5
+    deadline: 2026-08-05T18:00:00+03:00
+    status: in_progress
+    progress: 60
+    actual_duration: 120
+    task_type: long
+
+  - id: 3
+    name: "Сложные задачи"
+    category: "Учёба"
+    weight: 7
+    deadline: 2026-08-10T18:00:00+03:00
+    status: planned
+    progress: 0
+    task_type: long
+
+  - id: 4
+    name: "Подготовить отчёт"
+    category: "Работа"
+    weight: 4
+    deadline: 2026-07-25T18:00:00+03:00
+    status: planned
+    progress: 0
+    task_type: short
+
+  - id: 5
+    name: "Сходить к врачу"
+    category: "Лично"
+    weight: 2
+    deadline: 2026-07-22T12:00:00+03:00
+    status: done
+    progress: 100
+    actual_duration: 60
+    task_type: short
+
+  - id: 6
+    name: "Просроченная задача"
+    category: "Лично"
+    weight: 2
+    deadline: 2026-07-15T12:00:00+03:00
+    status: overdue
+    progress: 30
+    task_type: short
+
+meta:
+  work_start: "10:00"
+  work_end: "19:00"

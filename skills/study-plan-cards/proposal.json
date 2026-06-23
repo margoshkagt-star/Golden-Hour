@@ -1,0 +1,37 @@
+{
+  "schema": "openclaw.skill-workshop.proposal.v1",
+  "id": "study-plan-cards-20260623",
+  "kind": "create",
+  "status": "applied",
+  "title": "Create study-plan-cards",
+  "description": "Orchestrator for visual study cards: plan/state/topics/full modes, CardPlan assembly, delegates PNG render to study-cards, Telegram album delivery.",
+  "createdAt": "2026-06-23T08:00:00.000Z",
+  "updatedAt": "2026-06-23T08:00:00.000Z",
+  "createdBy": "cursor-agent",
+  "target": {
+    "skillName": "study-plan-cards",
+    "skillKey": "study-plan-cards",
+    "skillDir": "skills/study-plan-cards",
+    "skillFile": "skills/study-plan-cards/SKILL.md",
+    "source": "openclaw-workspace"
+  },
+  "scan": {
+    "state": "clean",
+    "critical": 0,
+    "warn": 0,
+    "info": 0,
+    "findings": []
+  },
+  "supportFiles": [
+    { "path": "scripts/render.js" },
+    { "path": "README.md" },
+    { "path": "LICENSE" },
+    { "path": "examples/plan.json" },
+    { "path": "examples/plan.example.json" },
+    { "path": "examples/tasks.example.yaml" },
+    { "path": "examples/cover_dark.png" },
+    { "path": "examples/week1_dark.png" }
+  ],
+  "goal": "Agent entry point for study plan cards: pick source, build CardPlan, render via study-cards, send album.",
+  "appliedAt": "2026-06-23T08:00:00.000Z"
+}

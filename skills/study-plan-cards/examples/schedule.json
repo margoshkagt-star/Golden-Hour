@@ -1,0 +1,15 @@
+{
+  "title": "Расписание дня",
+  "subtitle": "Понедельник · подготовка к ЕГЭ",
+  "date": "22.06.2026",
+  "footer": "⏱ 3 часа чистой работы + перерывы",
+  "slots": [
+    { "time": "10:00", "duration": "30 мин", "activity": "Теория: геом. смысл производной", "type": "theory" },
+    { "time": "10:30", "duration": "1 ч", "activity": "Задачи на касательную (№12)", "type": "practice" },
+    { "time": "11:30", "duration": "15 мин", "activity": "Перерыв ☕", "type": "break" },
+    { "time": "11:45", "duration": "1 ч 15 мин", "activity": "Задачи на экстремумы (№12)", "type": "practice" },
+    { "time": "13:00", "duration": "1 ч", "activity": "Обед + отдых", "type": "rest" },
+    { "time": "14:00", "duration": "30 мин", "activity": "Разбор ошибок утренних задач", "type": "review" },
+    { "time": "14:30", "duration": "30 мин", "activity": "Повторение формул по карточкам", "type": "review" }
+  ]
+}

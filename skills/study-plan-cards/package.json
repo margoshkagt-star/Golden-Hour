@@ -1,0 +1,32 @@
+{
+  "name": "study-plan-cards",
+  "version": "1.0.0",
+  "description": "Orchestrator for study plan PNG cards: modes, CardPlan assembly, delegates render to study-cards.",
+  "main": "scripts/render.js",
+  "scripts": {
+    "plan": "node scripts/render.js --mode=from-plan-file --source=examples/plan.json --output-dir=examples --themes=dark",
+    "stats": "node scripts/render.js --mode=from-state --source=examples/tasks.example.yaml --output-dir=examples --themes=dark",
+    "full": "node scripts/render.js --mode=full --plan-source=examples/plan.json --stats-source=examples/tasks.example.yaml --output-dir=examples --themes=dark",
+    "examples:plan": "node scripts/render.js --mode=from-plan-file --source=examples/plan.example.json --output-dir=examples --themes=dark"
+  },
+  "keywords": [
+    "education",
+    "study",
+    "plan",
+    "cards",
+    "orchestrator",
+    "telegram",
+    "openclaw",
+    "golden-hour"
+  ],
+  "engines": {
+    "node": ">=14"
+  },
+  "license": "MIT",
+  "author": "study-plan-cards contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/margoshkagt-star/Golden-Hour.git",
+    "directory": "skills/study-plan-cards"
+  }
+}
