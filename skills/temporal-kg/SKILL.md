@@ -1,8 +1,8 @@
 ---
 name: "temporal-kg"
-description: "Temporal knowledge graph: хранит события с временными метками и связями между ними. Не «что знаю», а «когда и как связано». Для адаптивного обучения и self-review."
-author: pending-clarification
-status_source: agent-generated-2026-06-18 (per karim's request)
+description: "Temporal knowledge graph: события и связи во времени по темам. Скрипт temporal-kg.mjs, хранилище users/<user_key>/temporal-kg/."
+status: live
+script: "scripts/temporal-kg.mjs"
 ---
 
 # Temporal Knowledge Graph — temporal-kg
@@ -43,14 +43,14 @@ status_source: agent-generated-2026-06-18 (per karim's request)
 
 Один файл на «срез» или один большой JSONL. Прагматично: **JSONL**, аппенд-only, по строке на событие.
 
-`memory/temporal-kg/events.jsonl`:
+`users/<user_key>/temporal-kg/events.jsonl`:
 ```json
 {"id": "e_001", "ts": "2026-06-15T19:30:00+03:00", "type": "solve", "topic": "электродинамика/закон-кулона", "problem_id": "p_42", "result": "fail", "error_type": "знак заряда"}
 {"id": "e_002", "ts": "2026-06-17T20:15:00+03:00", "type": "solve", "topic": "электродинамика/закон-кулона", "problem_id": "p_42", "result": "success", "duration_min": 12}
 {"id": "e_003", "ts": "2026-06-17T20:30:00+03:00", "type": "reflection", "linked_event": "e_001", "cause": "не понял знак заряда", "adaptation": "пересмотрел §X учебника"}
 ```
 
-**Рёбра** — отдельный файл `memory/temporal-kg/edges.jsonl`:
+**Рёбра** — `users/<user_key>/temporal-kg/edges.jsonl`:
 ```json
 {"from": "e_002", "to": "e_001", "type": "resolves", "ts": "2026-06-17T20:30:00"}
 {"from": "e_003", "to": "e_001", "type": "caused_by", "ts": "2026-06-17T20:30:00"}
@@ -58,7 +58,7 @@ status_source: agent-generated-2026-06-18 (per karim's request)
 ```
 
 **Topic-индекс** — для быстрого поиска по теме:
-`memory/temporal-kg/topic-index.json`:
+`users/<user_key>/temporal-kg/topic-index.json`:
 ```json
 {
   "электродинамика/закон-кулона": {
@@ -82,11 +82,11 @@ status_source: agent-generated-2026-06-18 (per karim's request)
 - `reflection-loop` → `reflection(linked_event, cause, adaptation)`
 - `goal-planned` при drift → `drift(topic, days_late, reason)`
 
-API:
-```python
-temporal_kg.emit(event_type, **fields)  # append to events.jsonl
-temporal_kg.link(from_id, to_id, edge_type)  # append to edges.jsonl
-temporal_kg.update_topic_index(topic, event_id)
+API (исполнение — **только скрипт**, не в голове):
+```bash
+node scripts/temporal-kg.mjs emit --user <key> --type solve --topic "..." --result fail
+node scripts/temporal-kg.mjs link --user <key> --from e_xxx --to e_yyy --edge resolves
+node scripts/temporal-kg.mjs topic --user <key> --topic "..."
 ```
 
 ### 2. Чтение: «что я знаю про тему X?»
@@ -181,3 +181,48 @@ temporal_kg.update_topic_index(topic, event_id)
 ```
 
 **Это сильно информативнее, чем «15.06: ошибся. 17.06: решил».**
+
+---
+
+## Golden Hour — исполнение
+
+- **Только при `setup_status: complete`.**
+- **Хранилище:** `users/<user_key>/temporal-kg/` (см. `references/data-schema.md`).
+- **Скрипт:** `node scripts/temporal-kg.mjs <cmd> --user <user_key>`.
+
+### Когда писать (emit)
+
+| Событие | После чего | Команда |
+|---|---|---|
+| `checkin` | `daily-study-checkin` | `checkin --mood N --topics "A,B"` |
+| `reflection` | `reflection-loop` | `reflection --topic "..." --causes "..." --adaptation "..."` |
+| `drift` | просрочка / срыв | `drift --topic "..." --days-late N --reason "..."` |
+| `solve` | ошибка или успех в задаче | `solve --topic "..." --problem-id p_N --result fail\|success` |
+| `milestone` | закрытие темы в плане | `milestone --topic "..." --status closed` |
+
+При `solve success` после прошлого `fail` — `--linked-fail e_xxx` (ребро `resolves`).
+
+### Когда читать
+
+| Запрос | Команда |
+|---|---|
+| «что по теме X» | `topic --topic "X"` → `summary` |
+| «что делал за 2 недели» | `window --days 14` |
+| «какие темы забыл» | `forgotten --days 7` |
+
+### Интеграции
+
+- **`spaced-repetition`** — `last_seen` из `topic-index.json`.
+- **`progress.md`** — дневник для человека; KG — граф для связей.
+
+### Не делать
+
+- ❌ Писать без скрипта. ❌ `memory/` / общие пути. ❌ emit на каждое сообщение.
+
+### Миграция
+
+```bash
+node scripts/temporal-kg.mjs import-progress --user <user_key>
+node scripts/temporal-kg.mjs import-all   # все active users
+```
+Идемпотентно: повторный запуск пропускает, если `progress.md` не менялся (`import-manifest.json`).

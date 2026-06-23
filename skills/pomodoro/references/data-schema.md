@@ -4,14 +4,20 @@ The skill is stateless beyond a small set of JSON state files plus append-only l
 
 ## File locations
 
-- Active session: `~/.openclaw/pomodoro/session.json`
-- Transition log: `~/.openclaw/pomodoro/log/YYYY-MM-DD.jsonl`
-- DND log: `~/.openclaw/pomodoro/log/YYYY-MM-DD-dnd.jsonl`
-- Suggestion log: `~/.openclaw/pomodoro/log/YYYY-MM-DD-suggestions.jsonl`
-- Daily summary: `~/.openclaw/pomodoro/summary/YYYY-MM-DD.json`
-- **Suggestion state (durable rate-limit counter): `~/.openclaw/pomodoro/suggestions.json`**
+**Golden Hour (per-user):** `users/<user_key>/pomodoro/`
 
-All paths are relative to `$HOME` / `%USERPROFILE%`. Parent directories are created on first write.
+- Active session: `users/<user_key>/pomodoro/session.json`
+- Transition log: `users/<user_key>/pomodoro/log/YYYY-MM-DD.jsonl`
+- DND log: `users/<user_key>/pomodoro/log/YYYY-MM-DD-dnd.jsonl`
+- Suggestion log: `users/<user_key>/pomodoro/log/YYYY-MM-DD-suggestions.jsonl`
+- Daily summary: `users/<user_key>/pomodoro/summary/YYYY-MM-DD.json`
+- **Suggestion state:** `users/<user_key>/pomodoro/suggestions.json`
+- Statistics: `users/<user_key>/pomodoro/stats.json`
+- Pending schedule: `users/<user_key>/pomodoro/schedule-pending.json`
+
+*(Upstream skill also documents `~/.openclaw/pomodoro/` for single-user agents — в этом воркспейсе только per-user.)*
+
+План для lookup: `users/<user_key>/plans/YYYY-MM-DD.json` — поля `tasks[].title`, `scheduled_at`, `est_minutes`, `status`.
 
 ## Active session state
 

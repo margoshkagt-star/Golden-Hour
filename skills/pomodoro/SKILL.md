@@ -226,3 +226,25 @@ Pomodoro technique timer delivered through Telegram. Cycles between work blocks 
 - **Credit rule is local.** The credit rule (default `actual_elapsed_capped`) is a pomodoro-skill decision. If the team wants a unified rule across all time-tracking skills, it must be defined in a shared config.
 - **Intent recognition for scheduled sessions is agent-side.** Step 10 describes the schedule flow (lookup, generate, propose, confirm) but does NOT define which user utterances trigger it. The agent decides. The skill provides the templates (`schedule-proposal`, `schedule-custom`, `schedule-too-short`, `schedule-no-plan`, `schedule-cancelled`); the agent maps free-text to the flow. False positives are mitigated by the explicit confirmation step.
 - **`focus-timer` skill overlap.** The user's workspace also has a `focus-timer` skill (separate Pomodoro-style timer with duration picker, praise-on-complete, 5-window stats). Both skills can coexist — they use different state files and different commands (`/pomodoro …` vs `/focus …` / timer-picker callbacks). The agent should pick one based on user intent. If the team wants them merged, that's a separate refactor.
+
+---
+
+## Golden Hour — исполнение
+
+- **Только при `setup_status: complete`.**
+- **Скрипт:** `node scripts/pomodoro.mjs <cmd> --user <user_key>` — детерминированная логика; агент читает JSON (`message`, `buttons`, `notifications`) и шлёт в Telegram.
+- **Хранилище:** `users/<user_key>/pomodoro/` (не `~/.openclaw/pomodoro/`).
+- **План:** `users/<user_key>/plans/YYYY-MM-DD.json` — `title`, `scheduled_at`, `est_minutes`, `status`.
+- **Тик (переходы фаз):** `node scripts/pomodoro-tick.mjs` на heartbeat/cron (~1 мин).
+- **DND:** перед любым ответом — `node scripts/pomodoro.mjs route --user <key> --text "<сообщение>"`; при `dnd: true` — только шаблон DND, другие скиллы не вызывать.
+- **Связь с `focus-timer`:** помодоро — циклы работа/перерыв; focus-timer — одна задача из плана с похвалой. Пользователь выбирает сам.
+
+| Команда пользователя | Скрипт |
+|---|---|
+| `/pomodoro start classic` | `pomodoro.mjs start --variant classic` |
+| `/pomodoro start 30/60` | `pomodoro.mjs start --shorthand 30/60` |
+| `/pomodoro schedule plan` | `pomodoro.mjs schedule --plan true` |
+| `/pomodoro status/skip/stop/stats` | `pomodoro.mjs status/skip/stop/stats` |
+| «поработаем» / «помодоро» | `schedule --plan true` или уточнить окно |
+| callback `pomodoro:skip` | `skip` |
+| callback `pomodoro:schedule:confirm` | `schedule-confirm` |

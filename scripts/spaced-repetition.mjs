@@ -16,6 +16,7 @@ import {
 import { loadProfile, getSetupStatus } from "./lib/profile.mjs";
 import { dueTopics, reviewTaskCandidates } from "./lib/spaced-repetition.mjs";
 import { resolveToday } from "./lib/dates.mjs";
+import { kgDir, topicLastSeenMap } from "./lib/temporal-kg-core.mjs";
 
 const { opts } = parseArgs(process.argv);
 const userKey = requireUser(opts);
@@ -30,7 +31,8 @@ if (getSetupStatus(profile) !== "complete") {
 }
 
 const progressText = readText(path.join(dir, "progress.md"), "");
-const due = dueTopics(profile, progressText, date, maxDue);
+const kgLastSeen = topicLastSeenMap(kgDir(dir));
+const due = dueTopics(profile, progressText, date, maxDue, kgLastSeen);
 const candidates = reviewTaskCandidates(due, profile, date);
 
 out({

@@ -70,8 +70,8 @@ description: "Завершает онбординг: спрашивает дед
    ```
    - **«Подключить»/1** → передать в `google-calendar-sync` (device flow: `connect` → ссылка+код → `connect:poll`). После `connected` — сразу выгрузить план/слоты (`upsert`).
    - **«Позже»/2** → пометить `calendar: skipped` в `profile.md`, не приставать; напомнить, что доступно по команде.
-8. **Запустить `help-menu`** — показать полное меню возможностей, чтобы пользователь сразу знал, что бот умеет. Затем предложить первое действие: «Спланировать сегодня?».
-9. После этого — рабочий режим доступен (`daily-plan`, `current-tasks`, `goal-checkin-notifier`, `task-tracker`, `focus-timer`, `goal-materials`, `longterm-stats`, `google-calendar-sync` и др. — см. `help-menu`).
+8. **Запустить `help-menu`** — показать полное меню возможностей (включая блок **👥 КОМАНДА**), чтобы пользователь сразу знал, что бот умеет. Затем предложить первое действие: «Спланировать сегодня?» или «Создать команду?».
+9. После этого — рабочий режим доступен (`daily-plan`, `current-tasks`, **`team-tasks`**, `goal-checkin-notifier`, `task-tracker`, `pomodoro`, `focus-timer`, `goal-materials`, `longterm-stats`, `google-calendar-sync` и др. — см. `help-menu`).
 
 ## Что НЕ делает
 - ❌ Не ставит `setup_status: complete`, пока нет дедлайна (или явного «без дедлайна») и часов.

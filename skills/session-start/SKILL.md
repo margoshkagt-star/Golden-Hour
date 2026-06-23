@@ -11,6 +11,12 @@ description: "Первый шаг каждой новой сессии: опре
 - Новая сессия: `/new`, рестарт чата, первое сообщение, пауза > 2ч
 - Срабатывает **раньше** `hello-intro` и любых других скиллов
 
+## Скрипт (обязательно)
+```bash
+node scripts/session-start.mjs --user <user_key> [--telegram-id <id>] [--username @x]
+```
+При наличии `telegram_id` скрипт автоматически резолвит pending-инвайты (`team-tasks`). Если `team_invites.count > 0` — сообщить пользователю, в какие команды он вступил.
+
 ## Логика
 
 1. **Определить `user_key`** (см. `user-profile`): Telegram id → `tg-<id>`, иначе `local`/`<channel>-<id>`.

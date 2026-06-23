@@ -8,12 +8,13 @@
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { parseArgs, ensureDir } = require('../../study-cards/lib/cli');
+const { DEFAULT_THEME } = require('../../study-cards/lib/palette');
 
 const ENGINE = path.join(__dirname, '..', '..', 'study-cards');
 const args = parseArgs(process.argv);
 const mode = args.mode || 'from-plan-file';
 const outputDir = path.resolve(args['output-dir'] || 'cards');
-const themes = args.themes || 'light,dark';
+const themes = args.themes || DEFAULT_THEME;
 
 ensureDir(outputDir);
 

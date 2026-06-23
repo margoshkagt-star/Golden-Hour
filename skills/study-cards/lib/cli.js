@@ -28,9 +28,12 @@ function resolveEdgeBin() {
   return 'google-chrome';
 }
 
-function parseThemes(args, fallback = ['light', 'dark']) {
+const { PALETTE, DEFAULT_THEME } = require('./palette');
+
+function parseThemes(args, fallback = [DEFAULT_THEME]) {
   if (!args.themes) return fallback;
-  return String(args.themes).split(',').map(t => t.trim()).filter(Boolean);
+  const list = String(args.themes).split(',').map(t => t.trim()).filter(Boolean);
+  return list.length ? list : [DEFAULT_THEME];
 }
 
-module.exports = { parseArgs, ensureDir, resolveEdgeBin, parseThemes };
+module.exports = { parseArgs, ensureDir, resolveEdgeBin, parseThemes, PALETTE, DEFAULT_THEME };

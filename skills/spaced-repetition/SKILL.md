@@ -29,5 +29,5 @@ date: "2026-06-19T11:30:00.000Z"
 
 ## Связь
 - `lib/spaced-repetition.mjs` — логика интервалов
-- Использует: `progress.md` (записи), `profile.md` (level)
+- Использует: `progress.md` (записи), `profile.md` (level), **`temporal-kg/topic-index.json`** (`last_seen`)
 - Запускается: `daily-plan.mjs` (через `task-weighting` для boost)

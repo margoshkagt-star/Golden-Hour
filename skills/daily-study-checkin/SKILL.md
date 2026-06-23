@@ -16,9 +16,11 @@ description: "Ежедневный чек-ин прогресса: что изу
 1. Спросить: **что изучил сегодня?** (темы, задачи, время)
 2. Спросить: **что на завтра?** есть ли блокеры?
 3. Записать в `users/<user_key>/progress.md` → раздел даты
-4. Обновить **streak** (дней подряд с активностью) там же
+3b. **Temporal KG:** `node scripts/temporal-kg.mjs checkin --user <key> --mood <1-5> --topics "<темы через запятую>"` (темы из ответа пользователя)
+4. Обновить **streak**
 5. Если streak сорвался — мягко отметить, без давления; предложить микро-цель на завтра
-6. Если тема из `plan.md` закрыта — отметить её закрытой в `progress.md`
+6. Если тема из `plan.md` закрыта — отметить в `progress.md` и **temporal-kg:**
+   `node scripts/temporal-kg.mjs milestone --user <key> --topic "<тема>" --status closed --actual-date YYYY-MM-DD`
 
 ## Шаблон `users/<user_key>/progress.md`
 

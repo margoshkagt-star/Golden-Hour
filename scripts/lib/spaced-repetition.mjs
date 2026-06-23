@@ -47,7 +47,7 @@ export function parseProgressReviews(text) {
   return reviews;
 }
 
-export function dueTopics(profile, progressText, today, maxDue = 3) {
+export function dueTopics(profile, progressText, today, maxDue = 3, kgLastSeen = {}) {
   const levelMap =
     profile.exam_topic_levels ||
     profile.olympiad_levels ||
@@ -69,7 +69,15 @@ export function dueTopics(profile, progressText, today, maxDue = 3) {
 
     const interval = intervalForLevel(lv, daysLeft);
     const reviewKey = title;
-    const last = reviews[reviewKey] || reviews[title] || profile.started_at || profile.created;
+    const kgKey = Object.keys(kgLastSeen).find(
+      (k) => k === title || k.includes(title) || title.includes(k)
+    );
+    const last =
+      reviews[reviewKey] ||
+      reviews[title] ||
+      (kgKey ? kgLastSeen[kgKey] : null) ||
+      profile.started_at ||
+      profile.created;
     const nextReview = last ? addDays(last, interval) : today;
 
     if (nextReview <= today) {

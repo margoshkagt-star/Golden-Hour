@@ -1,6 +1,6 @@
 ---
 name: "study-cards"
-description: "Render engine: PNG 1080×1440 for study plans and task stats (light/dark). Called by study-plan-cards; zero npm deps."
+description: "Render engine: PNG 1080×1440 for study plans, task stats, and tables (built-in dark theme). Called by study-plan-cards and table-cards.mjs."
 ---
 
 # Study Cards — render engine
@@ -12,7 +12,9 @@ description: "Render engine: PNG 1080×1440 for study plans and task stats (ligh
 | Скилл | Роль |
 |---|---|
 | **`study-plan-cards`** | Оркестратор: триггеры, источники данных, CardPlan, доставка в Telegram |
-| **`study-cards`** (этот) | Движок: `render.js` + `render-stats.js` → PNG в `--output-dir` |
+| **`study-cards`** (этот) | Движок: `render.js`, `render-stats.js`, `render-table.js` → PNG |
+
+**Стиль:** одна встроенная тёмная тема (`lib/palette.js` → `DEFAULT_THEME = dark`). Без выбора в профиле.
 
 ```
 daily-plan / study-plan / exam-topics / task-tracker
@@ -32,16 +34,27 @@ daily-plan / study-plan / exam-topics / task-tracker
 node skills/study-cards/render.js \
   --source=cards/plan.json \
   --output-dir=cards/ \
-  --themes=light,dark
+  --themes=dark
 ```
 
 Флаги:
 - `--source=` — CardPlan JSON (default: `plan.json` рядом со скриптом)
 - `--output-dir=` — куда писать PNG/HTML (default: каталог скрипта)
-- `--themes=light,dark` — какие темы рендерить
+- `--themes=dark` — встроенная тема (default, единственная в golden-hour)
 - `--no-weeks` — только обложка
 
-Выход: `cover_{theme}.png`, `weekN_{theme}.png`
+Выход: `cover_dark.png`, `weekN_dark.png`
+
+### `render-table.js` — произвольная таблица
+
+```bash
+node skills/study-cards/render-table.js \
+  --source=table.json \
+  --output-dir=cards/tables/ \
+  --name=table-0.png
+```
+
+JSON: `{ title, subtitle?, headers[], rows[][] }`. Вызывается из `scripts/table-cards.mjs`.
 
 ### `render-stats.js` — статистика (task-tracker)
 
