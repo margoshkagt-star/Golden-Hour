@@ -226,6 +226,10 @@
     chatAbort(sessionKey, runId) {
       return this.request("chat.abort", { sessionKey, runId });
     }
+
+    sessionsList(params = {}) {
+      return this.request("sessions.list", params, 30000);
+    }
   }
 
   global.GatewayChat = GatewayChat;

@@ -2,7 +2,17 @@
 <html lang="ru" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+(function(){
+  var p = new URLSearchParams(location.search);
+  if (p.has('miniapp') || sessionStorage.getItem('tg_miniapp') === '1') {
+    document.documentElement.classList.add('tg-miniapp');
+    sessionStorage.setItem('tg_miniapp', '1');
+  }
+})();
+</script>
+<link rel="stylesheet" href="/telegram-miniapp.css">
 <meta name="color-scheme" content="dark light">
 <title>Фельпик Dashboard</title>
 <style>
@@ -275,11 +285,20 @@
   .topology-edges line { stroke-linecap: round; transition: opacity 0.2s, stroke-width 0.2s; }
   .topology-edges line.dim { opacity: 0.08; }
   .topology-edges line.hl { opacity: 1; stroke-width: 2.5; }
+  .topology-edges line.agent-link { stroke-width: 2.2; opacity: 0.85; }
+  .topology-edges line.agent-link.dim { opacity: 0.1; }
+  .topology-edges line.agent-link.hl { opacity: 1; stroke-width: 3; }
   .topo-node {
-    position: absolute; z-index: 1; cursor: pointer;
+    position: absolute; z-index: 1; cursor: grab;
     transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
-    user-select: none;
+    user-select: none; touch-action: none;
   }
+  .topo-node.dragging {
+    cursor: grabbing; z-index: 10;
+    transition: none; transform: none !important;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+  }
+  .topo-node.dragging:hover { transform: none; }
   .topo-node.dim { opacity: 0.22; transform: scale(0.97); }
   .topo-node:hover { transform: scale(1.03); z-index: 2; }
   .topo-agent {
@@ -316,6 +335,7 @@
   .chat-panel { display: flex; flex-direction: column; height: min(78vh, 820px); min-height: 420px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-2); overflow: hidden; }
   .chat-toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--bg-3); flex-wrap: wrap; }
   .chat-toolbar select { background: var(--bg-2); color: var(--fg); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 10px; font-size: 12px; min-width: 160px; }
+  .chat-toolbar select#chat-session { min-width: 180px; max-width: min(360px, 42vw); }
   .chat-toolbar .status { font-size: 11px; color: var(--fg-3); display: flex; align-items: center; gap: 6px; margin-left: auto; }
   .chat-toolbar .status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--fg-3); }
   .chat-toolbar .status.on .dot { background: var(--ok); box-shadow: 0 0 6px rgba(45,212,160,0.5); }
@@ -384,7 +404,7 @@
     transition: background 0.12s;
   }
   .squad-agent:hover { background: var(--tab-hover); text-decoration: none; }
-  .squad-agent.main { border-left-color: var(--accent); background: var(--glow); }
+  .squad-agent.active { border-left-color: var(--accent); background: var(--glow); }
   .squad-agent .em { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
   .squad-agent .info { min-width: 0; flex: 1; }
   .squad-agent .nm { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -741,7 +761,8 @@
     display: flex; align-items: center; gap: 4px;
   }
   .kb-prio::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-  .kb-prio.critical, .kb-prio.high { color: #dc2626; }
+  .kb-prio.critical { color: var(--err); }
+  .kb-prio.high { color: var(--warn); }
   .kb-prio.medium { color: #d97706; }
   .kb-prio.low { color: var(--fg-3); }
   .kb-col[data-col="batch"] h3 { background: #f3f4f6; color: #374151; }
@@ -863,6 +884,14 @@
     width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--line-2);
     flex-shrink: 0; margin-top: 1px;
   }
+  button.cal-goal-chk.chk {
+    padding: 0; cursor: pointer; font: inherit; color: inherit;
+    background: transparent; appearance: none; -webkit-appearance: none;
+    position: relative; z-index: 2; touch-action: manipulation;
+  }
+  button.cal-goal-chk.chk:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
   .cal-goal-subs .chk.on { background: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--bg-2); }
   .cal-week-days {
     flex: 1; min-width: 0;
@@ -895,7 +924,7 @@
   }
   .cal-week-day-cards { display: flex; flex-direction: column; gap: 8px; flex: 1; }
   .cal-week-card {
-    position: relative; border: 0; border-radius: 12px; padding: 10px 10px 28px 14px;
+    position: relative; border-radius: 12px; padding: 10px 10px 28px 14px;
     background: var(--bg-2); border: 1px solid var(--line);
     box-shadow: var(--shadow); text-align: left; cursor: grab;
     font-family: inherit; width: 100%; min-height: 72px;
@@ -905,12 +934,14 @@
     position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
     background: var(--line-2);
   }
-  .cal-week-card.prio-critical,
-  .cal-week-card.prio-high {
+  .cal-week-card.prio-critical {
     background: #fef2f2; border-color: #fecaca;
   }
-  .cal-week-card.prio-critical .cal-week-card-stripe,
-  .cal-week-card.prio-high .cal-week-card-stripe { background: #dc2626; }
+  .cal-week-card.prio-high {
+    background: #fff7ed; border-color: #fed7aa;
+  }
+  .cal-week-card.prio-critical .cal-week-card-stripe { background: #dc2626; }
+  .cal-week-card.prio-high .cal-week-card-stripe { background: #ea580c; }
   .cal-week-card.prio-medium {
     background: #fffbeb; border-color: #fde68a;
   }
@@ -919,9 +950,11 @@
     background: var(--bg-2); border-color: var(--line);
   }
   .cal-week-card.prio-low .cal-week-card-stripe { background: #9ca3af; }
-  [data-theme="dark"] .cal-week-card.prio-critical,
-  [data-theme="dark"] .cal-week-card.prio-high {
+  [data-theme="dark"] .cal-week-card.prio-critical {
     background: rgba(127, 29, 29, 0.35); border-color: rgba(248, 113, 113, 0.35);
+  }
+  [data-theme="dark"] .cal-week-card.prio-high {
+    background: rgba(124, 45, 18, 0.35); border-color: rgba(251, 146, 60, 0.35);
   }
   [data-theme="dark"] .cal-week-card.prio-medium {
     background: rgba(120, 53, 15, 0.35); border-color: rgba(251, 191, 36, 0.28);
@@ -933,15 +966,15 @@
     font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
     padding: 1px 5px; border-radius: 4px; line-height: 1.4;
   }
-  .cal-week-card.prio-critical .cal-week-card-prio,
-  .cal-week-card.prio-high .cal-week-card-prio { color: #b91c1c; background: rgba(220, 38, 38, 0.12); }
+  .cal-week-card.prio-critical .cal-week-card-prio { color: #b91c1c; background: rgba(220, 38, 38, 0.12); }
+  .cal-week-card.prio-high .cal-week-card-prio { color: #c2410c; background: rgba(234, 88, 12, 0.12); }
   .cal-week-card.prio-medium .cal-week-card-prio { color: #b45309; background: rgba(217, 119, 6, 0.12); }
   .cal-week-card.prio-low .cal-week-card-prio { color: var(--fg-3); background: var(--pill); }
-  [data-theme="dark"] .cal-week-card.prio-critical .cal-week-card-prio,
-  [data-theme="dark"] .cal-week-card.prio-high .cal-week-card-prio { color: #fca5a5; background: rgba(220, 38, 38, 0.2); }
+  [data-theme="dark"] .cal-week-card.prio-critical .cal-week-card-prio { color: #fca5a5; background: rgba(220, 38, 38, 0.2); }
+  [data-theme="dark"] .cal-week-card.prio-high .cal-week-card-prio { color: #fdba74; background: rgba(234, 88, 12, 0.2); }
   [data-theme="dark"] .cal-week-card.prio-medium .cal-week-card-prio { color: #fcd34d; background: rgba(217, 119, 6, 0.2); }
-  .cal-goal-card.prio-critical,
-  .cal-goal-card.prio-high { border-left: 3px solid #dc2626; }
+  .cal-goal-card.prio-critical { border-left: 3px solid #dc2626; }
+  .cal-goal-card.prio-high { border-left: 3px solid #ea580c; }
   .cal-goal-card.prio-medium { border-left: 3px solid #d97706; }
   .cal-goal-card.prio-low { border-left: 3px solid #9ca3af; }
   .cal-week-legend {
@@ -952,7 +985,8 @@
   .cal-week-legend i {
     width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex-shrink: 0;
   }
-  .cal-week-legend i.p-critical, .cal-week-legend i.p-high { background: #dc2626; }
+  .cal-week-legend i.p-critical { background: #dc2626; }
+  .cal-week-legend i.p-high { background: #ea580c; }
   .cal-week-legend i.p-medium { background: #d97706; }
   .cal-week-legend i.p-low { background: #9ca3af; }
   .cal-week-card:active { cursor: grabbing; }
@@ -971,6 +1005,16 @@
   .cal-week-card-check {
     position: absolute; right: 10px; bottom: 10px;
     width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--line-2);
+    display: block; flex-shrink: 0; box-sizing: border-box;
+  }
+  button.cal-week-card-check {
+    padding: 0; margin: 0; cursor: pointer; font: inherit; color: inherit;
+    background: transparent; appearance: none; -webkit-appearance: none;
+    z-index: 2; touch-action: manipulation;
+  }
+  button.cal-week-card-check:hover { border-color: var(--accent); }
+  button.cal-week-card-check:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
   }
   .cal-week-card-check.on {
     background: var(--accent); border-color: var(--accent);
@@ -1019,7 +1063,8 @@
     box-shadow: inset 0 0 0 1px var(--glow);
   }
   .cal-event:hover { filter: brightness(0.97); }
-  .cal-event.prio-high, .cal-event.prio-critical { border-left-color: #dc2626; background: #fee2e2; color: #991b1b; }
+  .cal-event.prio-critical { border-left-color: #dc2626; background: #fee2e2; color: #991b1b; }
+  .cal-event.prio-high { border-left-color: #ea580c; background: #ffedd5; color: #9a3412; }
   .cal-event.prio-medium { border-left-color: #d97706; background: #fef3c7; color: #92400e; }
   .cal-event.prio-low { border-left-color: #9ca3af; }
   .kb-modal-actions { justify-content: flex-end; align-items: center; }
@@ -1124,6 +1169,8 @@
         <div class="chat-toolbar">
           <label class="muted" for="chat-agent">Агент</label>
           <select id="chat-agent"></select>
+          <label class="muted" for="chat-session">Сессия</label>
+          <select id="chat-session" title="Сессии агента"></select>
           <span class="session-key" id="chat-session-label" title="session key">—</span>
           <span class="status" id="chat-status"><span class="dot"></span><span id="chat-status-text">offline</span></span>
         </div>
@@ -1253,7 +1300,7 @@
   <div class="view" id="view-topology">
     <section class="card topology-card">
       <h2>System Topology</h2>
-      <p class="topology-hint">Клик по агенту → встроенный чат · Shift+клик → Claw Dash · cron → Crons · channel → Channels.</p>
+      <p class="topology-hint">Перетаскивайте блоки — они отталкиваются друг от друга · клик по агенту → чат · Shift+клик → Claw Dash · cron → Crons · channel → Channels.</p>
       <div id="topology-full" class="topology-wrap"></div>
     </section>
   </div>
@@ -1436,39 +1483,20 @@ if (location.protocol === 'file:') {
   throw new Error('file protocol');
 }
 
-// ===== student portal (same UI, trimmed) =====
-const STUDENT_TOKEN = (function () {
-  if (window.FELPIK_STUDENT?.token) return String(window.FELPIK_STUDENT.token);
-  const m = location.pathname.match(/^\/my\/([^/?#]+)/);
-  return m ? decodeURIComponent(m[1]) : '';
-})();
-const IS_STUDENT = !!(STUDENT_TOKEN || window.FELPIK_STUDENT?.enabled);
-if (IS_STUDENT) document.documentElement.dataset.student = '1';
-
-function applyStudentShell() {
-  if (!IS_STUDENT) return;
-  const brand = document.querySelector('header.top .brand');
-  const dot = brand?.querySelector('.dot');
-  if (dot && dot.nextSibling) dot.nextSibling.textContent = ' Фельпик · личный кабинет v' + (window.FELPIK_STUDENT?.uiVersion || '4');
-  const sc = $('#squad-chat-main');
-  if (sc) sc.textContent = '💬 Чат с Золотым часом';
-}
-
-function syncStudentChat() {
-  if (!IS_STUDENT || !state.data?.studentMeta) return;
-  chatState.agentId = 'golden-hour';
-  chatState.sessionKey = state.data.studentMeta.sessionKey;
-  const sel = $('#chat-agent');
-  if (sel) sel.innerHTML = '<option value="golden-hour">🌅 Золотой час</option>';
-  setText('#chat-session-label', chatState.sessionKey);
-}
-
 // ===== theme =====
 (function initTheme() {
+  if (
+    document.documentElement.classList.contains('tg-miniapp')
+    || sessionStorage.getItem('tg_miniapp') === '1'
+  ) return;
   const saved = localStorage.getItem('felpik-theme') || 'light';
   document.documentElement.dataset.theme = saved;
 })();
 function toggleTheme() {
+  if (
+    document.documentElement.classList.contains('tg-miniapp')
+    || sessionStorage.getItem('tg_miniapp') === '1'
+  ) return;
   const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
   document.documentElement.dataset.theme = next;
   localStorage.setItem('felpik-theme', next);
@@ -1529,18 +1557,11 @@ const state = {
   costsMode: localStorage.getItem('felpik-costs-mode') || 'builtin',
   grafanaUrl: localStorage.getItem('felpik-grafana-url') || '',
   kanbanCols: null,
-  kanbanColsStudent: false,
   snapshotLoading: false,
   costsLoading: false,
 };
 
-function API(path) {
-  const u = new URL(path, location.origin);
-  if (IS_STUDENT && STUDENT_TOKEN && u.pathname.startsWith('/api/')) {
-    u.searchParams.set('token', STUDENT_TOKEN);
-  }
-  return u.pathname + u.search;
-}
+const API = (path) => new URL(path, location.origin).pathname;
 
 async function fetchJson(path, timeoutMs = 90000) {
   const ctrl = new AbortController();
@@ -1593,7 +1614,7 @@ async function loadGrafanaStatus() {
     el.className = 'load-banner' + (ok ? '' : ' err');
     let html = parts.join(' · ');
     if (s.needsGatewayRestart) html += ' · <b>нужен</b> <code>openclaw gateway restart</code>';
-    if (!s.grafanaUp) html += ' · <code>.\grafana\start_grafana.ps1</code>';
+    if (!s.grafanaUp) html += ' · <code>.\grafana\start_grafana.ps1 -Watchdog</code>';
     el.innerHTML = html;
     if (s.embedUrl && !$('#grafana-url').value && !state.grafanaUrl) {
       $('#grafana-url').value = s.embedUrl;
@@ -1836,7 +1857,7 @@ $$('nav.tabs button[data-tab]').forEach(b => {
     state.tab = b.dataset.tab;
     syncNavUI(b.dataset.tab);
     render();
-    if (b.dataset.tab === 'chat') loadChatHistory();
+    if (b.dataset.tab === 'chat') loadAgentSessions();
   });
 });
 
@@ -1871,17 +1892,6 @@ async function tick() {
   bar.textContent = 'fetching…';
   bar.classList.add('pulse');
   try {
-    if (IS_STUDENT) {
-      if (!state.data) showLoadBanner('Загрузка личного кабинета…');
-      const snap = await fetchJson('/api/snapshot', 30000);
-      state.data = snap;
-      state.lastFetchTs = Date.now();
-      syncStudentChat();
-      render();
-      showLoadBanner('');
-      bar.textContent = 'ok · student · ' + tsLocal(state.lastFetchTs);
-      return;
-    }
     if (!state.data) {
       showLoadBanner('⚡ Быстрая загрузка (файлы, агенты)…');
       state.data = await fetchJson('/api/bootstrap', 8000);
@@ -1980,21 +1990,24 @@ function renderKpi() {
 }
 
 function agentChatUrl(agentId) {
-  const session = agentId === 'main' ? 'agent:main:main' : `agent:${agentId}:main`;
+  const session = (chatState.agentId === agentId && chatState.sessionKey)
+    ? chatState.sessionKey
+    : agentSessionKey(agentId);
   return `/go/chat?session=${encodeURIComponent(session)}`;
 }
 
 function agentSessionKey(agentId) {
-  if (IS_STUDENT && state.data?.studentMeta?.sessionKey) {
-    return state.data.studentMeta.sessionKey;
-  }
   return agentId === 'main' ? 'agent:main:main' : `agent:${agentId}:main`;
 }
+
+const CHAT_SESSION_PREFS_KEY = 'felpik-chat-session-prefs';
 
 const chatState = {
   gw: null,
   agentId: 'main',
   sessionKey: 'agent:main:main',
+  sessions: [],
+  sessionsLoading: false,
   messages: [],
   streaming: '',
   activeRunId: null,
@@ -2005,21 +2018,168 @@ const chatState = {
   config: null,
 };
 
-function openChatTab(agentId) {
-  if (IS_STUDENT) agentId = 'golden-hour';
-  if (agentId) selectChatAgent(agentId);
-  const btn = document.querySelector('nav.tabs button[data-tab="chat"]');
-  if (btn && state.tab !== 'chat') btn.click();
-  else if (state.tab === 'chat') loadChatHistory();
+function loadChatSessionPrefs() {
+  try {
+    return JSON.parse(localStorage.getItem(CHAT_SESSION_PREFS_KEY) || '{}');
+  } catch (_) {
+    return {};
+  }
 }
 
-function selectChatAgent(agentId) {
+function saveChatSessionPref(agentId, sessionKey) {
+  if (!agentId || !sessionKey) return;
+  const prefs = loadChatSessionPrefs();
+  prefs[agentId] = sessionKey;
+  try { localStorage.setItem(CHAT_SESSION_PREFS_KEY, JSON.stringify(prefs)); } catch (_) {}
+}
+
+function unwrapChatSessions(data) {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.sessions)) return data.sessions;
+  return [];
+}
+
+function sessionBelongsToAgent(sessionKey, agentId) {
+  return sessionKey === `agent:${agentId}:main` || sessionKey.startsWith(`agent:${agentId}:`);
+}
+
+function chatSessionLabel(s) {
+  const name = s.label || s.derivedTitle || s.displayName;
+  if (name) return name.length > 52 ? name.slice(0, 51) + '…' : name;
+  const tail = (s.key || '').split(':').pop() || s.key || 'session';
+  return tail === 'main' ? 'main' : (tail.length > 16 ? tail.slice(0, 15) + '…' : tail);
+}
+
+function sessionsFromHealth(agentId) {
+  const agents = state.data?.health?.agents || [];
+  const agent = agents.find(a => a.agentId === agentId);
+  const recent = agent?.sessions?.recent || [];
+  return recent
+    .filter(s => s.key && sessionBelongsToAgent(s.key, agentId))
+    .map(s => ({
+      key: s.key,
+      label: s.key.split(':').pop(),
+      updatedAt: s.age != null ? Date.now() - s.age : null,
+    }));
+}
+
+function populateChatSessions() {
+  const sel = $('#chat-session');
+  if (!sel) return;
+  const opts = chatState.sessions.map(s => {
+    const active = s.hasActiveRun ? ' ●' : '';
+    return `<option value="${esc(s.key)}">${esc(chatSessionLabel(s))}${active}</option>`;
+  }).join('');
+  sel.innerHTML = opts + '<option value="__new__">+ Новая сессия…</option>';
+  if (chatState.sessionKey) sel.value = chatState.sessionKey;
+}
+
+function selectChatSession(sessionKey, reload = true) {
+  if (sessionKey === '__new__') {
+    createNewChatSession();
+    return;
+  }
+  if (!sessionKey) return;
+  chatState.sessionKey = sessionKey;
+  const sel = $('#chat-session');
+  if (sel && sel.value !== sessionKey) sel.value = sessionKey;
+  setText('#chat-session-label', sessionKey);
+  saveChatSessionPref(chatState.agentId, sessionKey);
+  if (reload) loadChatHistory();
+}
+
+function createNewChatSession() {
+  const key = `agent:${chatState.agentId}:${Date.now()}`;
+  if (!chatState.sessions.some(s => s.key === key)) {
+    chatState.sessions.unshift({ key, label: 'Новая', updatedAt: Date.now() });
+  }
+  chatState.sessionKey = key;
+  populateChatSessions();
+  setText('#chat-session-label', key);
+  saveChatSessionPref(chatState.agentId, key);
+  chatState.messages = [];
+  chatState.streaming = '';
+  chatState.activeRunId = null;
+  chatState.sending = false;
+  $('#chat-send').disabled = false;
+  $('#chat-abort').disabled = true;
+  renderChatMessages();
+}
+
+async function loadAgentSessions(opts = {}) {
+  const sel = $('#chat-session');
+  if (!sel) return;
+  const keepKey = opts.keepSession
+    ? chatState.sessionKey
+    : (opts.preferKey || null);
+  chatState.sessionsLoading = true;
+  if (!opts.keepSession) {
+    sel.disabled = true;
+    sel.innerHTML = '<option value="">Загрузка…</option>';
+  }
+  const def = agentSessionKey(chatState.agentId);
+  try {
+    const gw = await ensureChatGateway();
+    let sessions = [];
+    if (gw.hasMethod('sessions.list')) {
+      const data = await gw.sessionsList({
+        agentId: chatState.agentId,
+        limit: 200,
+        includeDerivedTitles: true,
+        includeLastMessage: true,
+      });
+      sessions = unwrapChatSessions(data)
+        .filter(s => s.key && sessionBelongsToAgent(s.key, chatState.agentId));
+    } else {
+      sessions = sessionsFromHealth(chatState.agentId);
+    }
+    sessions.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    if (!sessions.some(s => s.key === def)) {
+      sessions.push({ key: def, label: 'main', updatedAt: null });
+      sessions.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    }
+    chatState.sessions = sessions;
+    const prefs = loadChatSessionPrefs();
+    let pick = keepKey;
+    if (!pick || !sessions.some(s => s.key === pick)) {
+      pick = prefs[chatState.agentId];
+    }
+    if (!pick || !sessions.some(s => s.key === pick)) {
+      pick = sessions.some(s => s.key === def) ? def : (sessions[0]?.key || def);
+    }
+    populateChatSessions();
+    selectChatSession(pick, !opts.keepSession);
+    if (opts.keepSession) setText('#chat-session-label', pick);
+  } catch (e) {
+    const fallback = sessionsFromHealth(chatState.agentId);
+    chatState.sessions = fallback.length
+      ? fallback
+      : [{ key: def, label: 'main', updatedAt: null }];
+    const pick = keepKey && chatState.sessions.some(s => s.key === keepKey)
+      ? keepKey
+      : (chatState.sessions[0]?.key || def);
+    populateChatSessions();
+    selectChatSession(pick, !opts.keepSession);
+    if (!opts.keepSession) setChatError(e.message || String(e));
+  } finally {
+    chatState.sessionsLoading = false;
+    sel.disabled = false;
+  }
+}
+
+function openChatTab(agentId, sessionKey) {
+  if (agentId) selectChatAgent(agentId, sessionKey);
+  const btn = document.querySelector('nav.tabs button[data-tab="chat"]');
+  if (btn && state.tab !== 'chat') btn.click();
+}
+
+function selectChatAgent(agentId, sessionKey) {
   chatState.agentId = agentId || 'main';
-  chatState.sessionKey = agentSessionKey(chatState.agentId);
   const sel = $('#chat-agent');
   if (sel) sel.value = chatState.agentId;
-  setText('#chat-session-label', chatState.sessionKey);
-  loadChatHistory();
+  renderSquad();
+  loadAgentSessions(sessionKey ? { preferKey: sessionKey } : {});
 }
 
 function setChatError(msg) {
@@ -2057,10 +2217,6 @@ function normalizeHistoryMessages(data) {
 }
 
 async function ensureChatGateway() {
-  if (IS_STUDENT) {
-    setChatStatus(true, 'online');
-    return null;
-  }
   if (chatState.gw && chatState.connected) return chatState.gw;
   if (!chatState.config) {
     chatState.config = await fetchJson('/api/chat/config', 8000);
@@ -2102,6 +2258,7 @@ async function ensureChatGateway() {
         $('#chat-send').disabled = false;
         $('#chat-abort').disabled = true;
         loadChatHistory();
+        loadAgentSessions({ keepSession: true });
       }
     });
   }
@@ -2111,25 +2268,6 @@ async function ensureChatGateway() {
 
 async function loadChatHistory() {
   if (!chatState.sessionKey) return;
-  if (IS_STUDENT) {
-    chatState.loadingHistory = true;
-    renderChatMessages();
-    try {
-      const data = await fetchJson('/api/chat/history?limit=200', 30000);
-      chatState.messages = normalizeHistoryMessages(data.messages || []);
-      chatState.error = null;
-      setChatError(null);
-      setChatStatus(true, 'online');
-    } catch (e) {
-      chatState.error = e.message || String(e);
-      setChatError(chatState.error);
-      setChatStatus(false, 'offline');
-    } finally {
-      chatState.loadingHistory = false;
-      renderChatMessages();
-    }
-    return;
-  }
   chatState.loadingHistory = true;
   renderChatMessages();
   try {
@@ -2181,26 +2319,6 @@ async function sendChatMessage() {
   chatState.messages.push({ role: 'user', text });
   renderChatMessages();
   input.value = '';
-  if (IS_STUDENT) {
-    try {
-      const r = await fetch(API('/api/chat/send'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: STUDENT_TOKEN, message: text }),
-      });
-      const data = await r.json();
-      if (!data.ok) throw new Error(data.error || ('HTTP ' + r.status));
-      if (data.reply) chatState.messages.push({ role: 'assistant', text: data.reply });
-      await loadChatHistory();
-      setChatStatus(true, 'online');
-    } catch (e) {
-      setChatError(e.message || String(e));
-    } finally {
-      chatState.sending = false;
-      $('#chat-send').disabled = false;
-    }
-    return;
-  }
   try {
     const gw = await ensureChatGateway();
     if (!gw.hasMethod('chat.send')) {
@@ -2245,6 +2363,7 @@ function initChatUi() {
   populateChatAgents();
   setText('#chat-session-label', chatState.sessionKey);
   $('#chat-agent')?.addEventListener('change', e => selectChatAgent(e.target.value));
+  $('#chat-session')?.addEventListener('change', e => selectChatSession(e.target.value));
   $('#chat-send')?.addEventListener('click', () => sendChatMessage());
   $('#chat-abort')?.addEventListener('click', () => abortChat());
   $('#chat-input')?.addEventListener('keydown', e => {
@@ -2252,7 +2371,7 @@ function initChatUi() {
   });
   $('#squad-chat-main')?.addEventListener('click', e => { e.preventDefault(); openChatTab('main'); });
   ensureChatGateway().then(() => {
-    if (state.tab === 'chat') loadChatHistory();
+    if (state.tab === 'chat') loadAgentSessions();
   }).catch(e => setChatError(e.message || String(e)));
 }
 
@@ -2285,11 +2404,11 @@ function renderSquad() {
     return;
   }
   list.innerHTML = filtered.map(a => {
-    const main = a.id === 'main';
+    const active = a.id === chatState.agentId;
     const sc = sessMap[a.id] || 0;
     const online = sc > 0;
     const url = agentChatUrl(a.id);
-    return `<button type="button" class="squad-agent${main ? ' main' : ''}${online ? ' online' : ''}" data-agent-id="${esc(a.id)}" title="Чат: ${esc(a.name || a.id)}">
+    return `<button type="button" class="squad-agent${active ? ' active' : ''}${online ? ' online' : ''}" data-agent-id="${esc(a.id)}" title="Чат: ${esc(a.name || a.id)}">
       <span class="em">${esc(a.emoji || '🤖')}</span>
       <span class="info"><div class="nm">${esc(a.name || a.id)}</div><div class="st">${online ? 'Online · ' + sc + ' sess' : 'Offline'}</div></span>
       <span class="dot"></span>
@@ -2367,19 +2486,10 @@ function renderCosts() {
 const KANBAN_COLS_STORAGE_KEY = 'felpik-kanban-cols';
 
 const KANBAN_COLS_DEFAULT = [
-  { id: 'batch', label: 'Inbox', icon: '📥', status: 'batch', builtIn: true, match: s => /batch/.test(s) },
-  { id: 'approval', label: 'Assigned', icon: '👤', status: 'approval', builtIn: true, match: s => /approval|approve/.test(s) },
-  { id: 'todo', label: 'Queue', icon: '📋', status: 'pending', builtIn: true, match: s => /^(queued|pending|new|todo|planned)$/.test(s) },
+  { id: 'todo', label: 'Queue', icon: '📋', status: 'pending', builtIn: true, match: s => /^(queued|pending|new|todo|planned|batch|approval|approve|snoozed)$/.test(s) },
   { id: 'progress', label: 'In Progress', icon: '⚡', status: 'in_progress', builtIn: true, match: s => /^(running|in[-_ ]?progress|active|working)$/.test(s) },
   { id: 'done', label: 'Done', icon: '✓', status: 'done', builtIn: true, match: s => /^(done|completed|ok|success)$/.test(s) },
   { id: 'archive', label: 'Blocked', icon: '🚫', status: 'failed', builtIn: true, match: s => /^(failed|error|cancelled|canceled|archived|blocked)$/.test(s) },
-];
-
-const STUDENT_KANBAN_COLS = [
-  { id: 'todo', label: 'Очередь', icon: '📋', status: 'planned', builtIn: true, match: s => /^(queued|pending|new|todo|planned|batch|approval|snoozed)$/.test(s) },
-  { id: 'progress', label: 'В процессе', icon: '⚡', status: 'in_progress', builtIn: true, match: s => /^(running|in[-_ ]?progress|active|working)$/.test(s) },
-  { id: 'done', label: 'Сделано', icon: '✓', status: 'done', builtIn: true, match: s => /^(done|completed|ok|success)$/.test(s) },
-  { id: 'archive', label: 'Брошено', icon: '🚫', status: 'skipped', builtIn: true, match: s => /^(failed|error|cancelled|canceled|archived|blocked|skipped)$/.test(s) },
 ];
 
 const KB_COL_PALETTE = [
@@ -2422,7 +2532,7 @@ function loadKanbanCols() {
   try {
     const saved = JSON.parse(raw);
     if (!Array.isArray(saved) || !saved.length) return cloneKanbanDefaults();
-    const cols = saved.map(mergeKanbanCol).filter(Boolean);
+    const cols = saved.map(mergeKanbanCol).filter(Boolean).filter(c => !['batch', 'approval'].includes(c.id));
     return cols.length ? cols : cloneKanbanDefaults();
   } catch {
     return cloneKanbanDefaults();
@@ -2442,13 +2552,6 @@ function saveKanbanCols(cols) {
 }
 
 function getKanbanCols() {
-  if (IS_STUDENT) {
-    if (!state.kanbanColsStudent) {
-      state.kanbanCols = STUDENT_KANBAN_COLS.map(c => ({ ...c }));
-      state.kanbanColsStudent = true;
-    }
-    return state.kanbanCols;
-  }
   if (!state.kanbanCols) state.kanbanCols = loadKanbanCols();
   return state.kanbanCols;
 }
@@ -2637,7 +2740,6 @@ function openGoalModal(editTaskId) {
 }
 
 function openTaskModal(colId, editTaskId, prefillDate, opts) {
-  if (IS_STUDENT) return;
   state.taskModalEditId = editTaskId || null;
   state.taskModalGoal = !!(opts && opts.goal);
   const editing = !!editTaskId;
@@ -2696,7 +2798,6 @@ function closeTaskModal() {
 }
 
 async function saveKanbanTask() {
-  if (IS_STUDENT) return;
   if (state.taskModalGoal) {
     if (state.taskModalEditId) return updateWeekGoal();
     return createWeekGoal();
@@ -2865,7 +2966,6 @@ async function createKanbanTask() {
 }
 
 async function deletePoolTask(taskId, confirmTitle) {
-  if (IS_STUDENT) return false;
   const poolTask = findPoolTask(taskId);
   if (!poolTask) {
     alert('Удаление доступно только для задач из task-pool.');
@@ -2889,6 +2989,31 @@ async function deletePoolTask(taskId, confirmTitle) {
   } catch (e) {
     alert('Не удалось удалить: ' + e.message);
     return false;
+  }
+}
+
+async function toggleCalTaskDone(taskId) {
+  const t = findPoolTask(taskId);
+  if (!t) return;
+  const done = isCalTaskDone(t);
+  const nextStatus = done ? 'pending' : 'done';
+  const prevStatus = t.status;
+  t.status = nextStatus;
+  refreshTaskViews();
+  try {
+    const r = await fetch(API('/api/tasks/' + encodeURIComponent(taskId)), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: nextStatus }),
+    });
+    if (!r.ok) throw new Error(await r.text() || ('HTTP ' + r.status));
+    const data = await r.json();
+    if (data.task) Object.assign(t, data.task);
+    refreshTaskViews();
+  } catch (e) {
+    t.status = prevStatus;
+    refreshTaskViews();
+    alert('Не удалось обновить статус: ' + e.message);
   }
 }
 
@@ -2998,6 +3123,7 @@ function kanbanAutoScrollTick() {
 }
 
 function startKanbanAutoScroll() {
+  if (typeof isKanbanListLayout === 'function' && isKanbanListLayout()) return;
   stopKanbanAutoScroll();
   $('#kanban-scroll-area')?.classList.add('drag-scrolling');
   kanbanScrollRaf = requestAnimationFrame(kanbanAutoScrollTick);
@@ -3229,6 +3355,62 @@ function colForStatus(status) {
   return cols.find(c => c.id === 'todo')?.id || cols[0]?.id || 'todo';
 }
 
+function isKanbanListLayout() {
+  return document.documentElement.classList.contains('kb-layout-list');
+}
+
+function renderKanbanCard(t, col, stripeStyle, listMode) {
+  const bracketTags = extractTaskTags(t.title);
+  const title = cleanTaskTitle(t.title);
+  const extras = [];
+  if (t.tag) extras.push({ n: t.tag, c: tagClass(t.tag) });
+  if (t.model) extras.push({ n: t.model.split('/').pop(), c: 'cat' });
+  if (!bracketTags.length && t.status && !/^(todo|pending)$/.test(t.status)) extras.push({ n: t.status, c: 'cat' });
+  const allTags = [...bracketTags.map(n => ({ n, c: tagClass(n) })), ...extras];
+  const tagHtml = allTags.length
+    ? `<div class="kb-tags">${allTags.map(x => `<span class="kb-tag ${x.c}">${esc(x.n)}</span>`).join('')}</div>`
+    : '';
+  const drag = t.pool ? ' draggable="true"' : '';
+  const editBtn = t.pool ? `<button type="button" class="kb-edit-btn" data-task-id="${esc(t.id)}" title="Редактировать">✎</button>` : '';
+
+  if (listMode) {
+    const projectLabel = t.tag || (t.model ? t.model.split('/').pop() : '') || bracketTags[0] || '';
+    const projectHtml = projectLabel
+      ? `<span class="kb-list-project"><span class="kb-list-dot" aria-hidden="true"></span>${esc(projectLabel)}</span>`
+      : '';
+    return `<div class="kb-card kb-card-list" data-task-id="${esc(t.id)}"${drag}>
+      <div class="kb-stripe"${stripeStyle}></div>
+      <div class="kb-inner">
+        ${editBtn}
+        <div class="kb-list-top">
+          <div class="kb-list-title">${esc(title)}</div>
+          <span class="kb-list-status" data-col="${esc(col.id)}">${esc(col.label)}</span>
+        </div>
+        ${tagHtml}
+        <div class="kb-list-meta">
+          ${projectHtml}
+          <span class="kb-list-user">👤 ${esc(taskAssigneeLabel(t.agent))}</span>
+        </div>
+        <span class="kb-list-chevron" aria-hidden="true">›</span>
+      </div>
+    </div>`;
+  }
+
+  return `<div class="kb-card" data-task-id="${esc(t.id)}"${drag}>
+    <div class="kb-stripe"${stripeStyle}></div>
+    <div class="kb-inner">
+      ${editBtn}
+      <div class="kb-top"><span class="kb-id">#${taskDisplayId(t.id)}</span><span class="kb-age">${esc(taskAgeLabel(t.ts))}</span></div>
+      <div class="title">${esc(title)}</div>
+      ${tagHtml}
+      <div class="kb-foot">
+        <span class="kb-project" title="${esc(taskAssigneeLabel(t.agent))}">🔗 ${esc(taskAssigneeLabel(t.agent))}</span>
+        <span class="kb-prio ${esc(t.priority)}">${esc(t.priority)}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderKanban() {
   const cols = getKanbanCols();
   const all = normalizeTasks();
@@ -3256,6 +3438,9 @@ function renderKanban() {
     return colForStatus(t.status) !== 'archive';
   }).length;
   const canDeleteCol = cols.length > 1;
+  const listMode = isKanbanListLayout();
+  const boardEl = $('#kanban-board');
+  if (boardEl) boardEl.classList.toggle('kanban-list', listMode);
   const colHtml = cols.map(col => {
     const cards = byCol[col.id];
     const countLabel = col.id === 'done' && doneTarget > cards.length
@@ -3264,41 +3449,19 @@ function renderKanban() {
     const theme = kanbanColThemeStyles(col);
     const headStyle = theme.head ? ` style="${theme.head}"` : '';
     const stripeStyle = theme.stripe ? ` style="${theme.stripe}"` : '';
-    const body = cards.length ? cards.map(t => {
-      const bracketTags = extractTaskTags(t.title);
-      const title = cleanTaskTitle(t.title);
-      const extras = [];
-      if (t.tag) extras.push({ n: t.tag, c: tagClass(t.tag) });
-      if (t.model) extras.push({ n: t.model.split('/').pop(), c: 'cat' });
-      if (!bracketTags.length && t.status && !/^(todo|pending)$/.test(t.status)) extras.push({ n: t.status, c: 'cat' });
-      const allTags = [...bracketTags.map(n => ({ n, c: tagClass(n) })), ...extras];
-      const tagHtml = allTags.length
-        ? `<div class="kb-tags">${allTags.map(x => `<span class="kb-tag ${x.c}">${esc(x.n)}</span>`).join('')}</div>`
-        : '';
-      return `<div class="kb-card" data-task-id="${esc(t.id)}"${t.pool ? ' draggable="true"' : ''}>
-        <div class="kb-stripe"${stripeStyle}></div>
-        <div class="kb-inner">
-          ${t.pool && !IS_STUDENT ? `<button type="button" class="kb-edit-btn" data-task-id="${esc(t.id)}" title="Редактировать">✎</button>` : ''}
-          <div class="kb-top"><span class="kb-id">#${taskDisplayId(t.id)}</span><span class="kb-age">${esc(taskAgeLabel(t.ts))}</span></div>
-          <div class="title">${esc(title)}</div>
-          ${tagHtml}
-          <div class="kb-foot">
-            <span class="kb-project" title="${esc(taskAssigneeLabel(t.agent))}">🔗 ${esc(taskAssigneeLabel(t.agent))}</span>
-            <span class="kb-prio ${esc(t.priority)}">${esc(t.priority)}</span>
-          </div>
-        </div>
-      </div>`;
-    }).join('') : '<div class="kb-empty">пусто</div>';
+    const body = cards.length
+      ? cards.map(t => renderKanbanCard(t, col, stripeStyle, listMode)).join('')
+      : `<div class="kb-empty">${listMode ? 'Нет назначенных вам задач' : 'пусто'}</div>`;
     const delBtn = canDeleteCol
       ? `<button type="button" class="kb-col-del" data-col="${esc(col.id)}" title="Удалить колонку">×</button>`
       : '';
-    return `<div class="kb-col${col.custom ? ' kb-col-custom' : ''}" data-col="${col.id}">
+    return `<div class="kb-col${col.custom ? ' kb-col-custom' : ''}${listMode ? ' kb-col-list' : ''}" data-col="${col.id}">
       <h3${headStyle}><span class="col-icon">${col.icon}</span><span class="col-label">${esc(col.label)}</span><span class="c">${countLabel}</span>${delBtn}</h3>
       <div class="kb-cards">${body}</div>
-      ${IS_STUDENT ? '' : `<button type="button" class="kb-col-add" data-col="${col.id}">+ Add card</button>`}
+      <button type="button" class="kb-col-add" data-col="${col.id}">+ Add card</button>
     </div>`;
   }).join('');
-  $('#kanban-board').innerHTML = colHtml + (IS_STUDENT ? '' : `<div class="kb-col-new"><button type="button" class="kb-col-new-btn">+ Добавить колонку</button></div>`);
+  if (boardEl) boardEl.innerHTML = colHtml + `<div class="kb-col-new"><button type="button" class="kb-col-new-btn">+ Добавить колонку</button></div>`;
 }
 
 const CAL_MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
@@ -3336,10 +3499,12 @@ function renderCalGoalCard(t) {
   const total = subs.length || 1;
   const doneN = done ? total : 0;
   const pct = total ? Math.round((doneN / total) * 100) : 0;
+  const miniapp = document.documentElement.classList.contains('tg-miniapp');
   const subHtml = subs.length
-    ? subs.map(s => `<li><span class="chk"></span><span>${esc(s)}</span></li>`).join('')
-    : `<li><span class="chk${done ? ' on' : ''}"></span><span>${esc(title)}</span></li>`;
-  return `<div class="cal-goal-card prio-${esc(taskPriorityClass(t))}${done ? ' done' : ''}" data-task-id="${esc(t.id)}"${IS_STUDENT ? '' : ' draggable="true"'} title="${esc(title)}" role="button" tabindex="0">
+    ? subs.map(s => `<li><button type="button" class="cal-goal-chk chk${done ? ' on' : ''}" data-task-id="${esc(t.id)}" aria-label="${done ? 'Снять отметку' : 'Отметить выполненным'}"></button><span>${esc(s)}</span></li>`).join('')
+    : `<li><button type="button" class="cal-goal-chk chk${done ? ' on' : ''}" data-task-id="${esc(t.id)}" aria-label="${done ? 'Снять отметку' : 'Отметить выполненным'}"></button><span>${esc(title)}</span></li>`;
+  const dragAttr = miniapp ? '' : ' draggable="true"';
+  return `<div class="cal-goal-card prio-${esc(taskPriorityClass(t))}${done ? ' done' : ''}" data-task-id="${esc(t.id)}"${dragAttr} title="${esc(title)}" tabindex="0">
     <button type="button" class="cal-goal-del" data-task-id="${esc(t.id)}" title="Удалить цель">×</button>
     <div class="cal-goal-title">${esc(title)}</div>
     <div class="cal-goal-progress">
@@ -3354,15 +3519,15 @@ function renderCalWeekCard(t) {
   const title = cleanTaskTitle(t.title || t.name || t.id || '—');
   const done = isCalTaskDone(t);
   const prio = taskPriorityClass(t);
-  return `<button type="button" class="cal-week-card prio-${esc(prio)}${done ? ' done' : ''}" data-task-id="${esc(t.id)}"${IS_STUDENT ? '' : ' draggable="true"'} title="${esc(title)} · ${esc(taskPriorityLabel(prio))}">
+  return `<div class="cal-week-card prio-${esc(prio)}${done ? ' done' : ''}" data-task-id="${esc(t.id)}" draggable="true" title="${esc(title)} · ${esc(taskPriorityLabel(prio))}" tabindex="0" role="group">
     <div class="cal-week-card-stripe"></div>
     <div class="cal-week-card-top">
       <span class="cal-week-card-id">#${taskDisplayId(t.id)}</span>
       <span class="cal-week-card-prio">${esc(taskPriorityLabel(prio))}</span>
     </div>
     <div class="cal-week-card-body">${esc(title)}</div>
-    <span class="cal-week-card-check${done ? ' on' : ''}"></span>
-  </button>`;
+    <button type="button" class="cal-week-card-check chk${done ? ' on' : ''}" data-task-id="${esc(t.id)}" aria-label="${done ? 'Снять отметку' : 'Отметить выполненным'}"></button>
+  </div>`;
 }
 
 function renderCalWeekDayColumn(dk, tasks, isToday) {
@@ -3371,8 +3536,13 @@ function renderCalWeekDayColumn(dk, tasks, isToday) {
     return (pa[(a.priority || 'medium').toLowerCase()] ?? 2) - (pa[(b.priority || 'medium').toLowerCase()] ?? 2);
   });
   const cards = sorted.map(renderCalWeekCard).join('');
+  const stackMode = document.documentElement.classList.contains('tg-miniapp');
+  const countHtml = stackMode ? `<span class="cal-week-day-count">${sorted.length}</span>` : '';
+  const headInner = stackMode
+    ? `<span class="cal-week-day-label">${esc(formatWeekDayHeader(dk))}</span>${countHtml}`
+    : esc(formatWeekDayHeader(dk));
   return `<div class="cal-week-day cal-drop-zone${isToday ? ' today' : ''}" data-date="${esc(dk)}">
-    <div class="cal-week-day-head">${esc(formatWeekDayHeader(dk))}</div>
+    <div class="cal-week-day-head">${headInner}</div>
     <button type="button" class="cal-week-add" data-date="${esc(dk)}">
       <span>Добавить задачу</span>
       <span class="cal-week-add-plus">+</span>
@@ -3550,7 +3720,8 @@ function renderCalendarToday(board) {
 }
 
 function renderCalendarWeek(board) {
-  board.className = 'cal-week-planner';
+  const stackMode = document.documentElement.classList.contains('tg-miniapp');
+  board.className = stackMode ? 'cal-week-planner cal-week-stack' : 'cal-week-planner';
   const anchor = state.calendarAnchor || todayDateKey();
   state.calendarAnchor = anchor;
   const weekDays = getWeekDayKeys(anchor);
@@ -3595,7 +3766,7 @@ function renderCalendarWeek(board) {
   board.innerHTML = `<aside class="cal-week-goals">
     <div class="cal-week-goals-head"><h3>Цели недели</h3></div>
     ${goalsHtml}
-    <button type="button" class="cal-week-goal-add"${IS_STUDENT ? ' style="display:none"' : ''}>+ Добавить цель</button>
+    <button type="button" class="cal-week-goal-add">+ Добавить цель</button>
   </aside>
   <div class="cal-week-days">${daysHtml}</div>`;
 }
@@ -3608,7 +3779,7 @@ function renderCalDayCell(dayNum, dateStr, tasks, inMonth, isToday, showWeekday,
   const events = sorted.map(t => {
     const title = cleanTaskTitle(t.title || t.name || t.type || t.id || '—');
     const prio = (t.priority || 'medium').toLowerCase();
-    return `<button type="button" class="cal-event prio-${esc(prio)}" data-task-id="${esc(t.id)}"${IS_STUDENT ? '' : ' draggable="true"'} title="${esc(title)}">${esc(title)}</button>`;
+    return `<button type="button" class="cal-event prio-${esc(prio)}" data-task-id="${esc(t.id)}" draggable="true" title="${esc(title)}">${esc(title)}</button>`;
   }).join('');
   return `<div class="cal-day cal-drop-zone${inMonth ? '' : ' other'}${isToday ? ' today' : ''}" data-date="${esc(dateStr)}">
     <div class="cal-day-head">
@@ -3616,7 +3787,7 @@ function renderCalDayCell(dayNum, dateStr, tasks, inMonth, isToday, showWeekday,
         ${showWeekday && weekdayLabel ? `<span class="cal-day-label">${esc(weekdayLabel)}</span>` : ''}
         <span class="cal-day-num">${dayNum}</span>
       </div>
-      <button type="button" class="cal-day-add" data-date="${esc(dateStr)}" title="Добавить задачу"${IS_STUDENT ? ' style="display:none"' : ''}>+</button>
+      <button type="button" class="cal-day-add" data-date="${esc(dateStr)}" title="Добавить задачу">+</button>
     </div>
     ${events || (showWeekday ? '<div class="kb-empty">пусто</div>' : '')}
   </div>`;
@@ -3682,7 +3853,20 @@ function initCalendarUi() {
   $('#btn-add-task-cal')?.addEventListener('click', () => openTaskModal('todo'));
   $('#cal-board')?.addEventListener('click', e => {
     if (calJustDropped) { calJustDropped = false; return; }
-    if (IS_STUDENT) return;
+    const weekChk = e.target.closest('.cal-week-card-check');
+    if (weekChk) {
+      e.stopPropagation();
+      e.preventDefault();
+      toggleCalTaskDone(weekChk.dataset.taskId);
+      return;
+    }
+    const goalChk = e.target.closest('.cal-goal-chk');
+    if (goalChk) {
+      e.stopPropagation();
+      e.preventDefault();
+      toggleCalTaskDone(goalChk.dataset.taskId);
+      return;
+    }
     const goalDel = e.target.closest('.cal-goal-del');
     if (goalDel) {
       e.stopPropagation();
@@ -3697,12 +3881,12 @@ function initCalendarUi() {
       return;
     }
     const goalCard = e.target.closest('.cal-goal-card');
-    if (goalCard) {
+    if (goalCard && !e.target.closest('.cal-goal-chk, .cal-goal-del')) {
       openGoalModal(goalCard.dataset.taskId);
       return;
     }
     const ev = e.target.closest('.cal-event, .cal-week-card');
-    if (ev) {
+    if (ev && !e.target.closest('.cal-week-card-check')) {
       openTaskModal(null, ev.dataset.taskId);
       return;
     }
@@ -3716,12 +3900,15 @@ let calDragId = null;
 let calJustDropped = false;
 
 function initCalendarDragDrop() {
-  if (IS_STUDENT) return;
   const board = $('#cal-board');
   if (!board || board.dataset.dragInit) return;
   board.dataset.dragInit = '1';
 
   board.addEventListener('dragstart', e => {
+    if (e.target.closest('.cal-goal-chk, .cal-goal-del, .cal-week-card-check')) {
+      e.preventDefault();
+      return;
+    }
     const ev = e.target.closest('.cal-event[draggable="true"], .cal-week-card[draggable="true"], .cal-goal-card[draggable="true"]');
     if (!ev) return;
     calDragId = ev.dataset.taskId;
@@ -3767,7 +3954,6 @@ function initCalendarDragDrop() {
 }
 
 async function moveCalendarTask(taskId, dueDate) {
-  if (IS_STUDENT) return;
   const pool = state.data?.active_pool;
   if (!pool || typeof pool !== 'object') return;
   const tasks = Array.isArray(pool) ? pool : (pool.tasks || []);
@@ -3805,13 +3991,6 @@ async function moveCalendarTask(taskId, dueDate) {
 
 function renderTop() {
   if (!state.data) return;
-  if (IS_STUDENT && state.data.studentMeta) {
-    const m = state.data.studentMeta;
-    setHtml('#top-meta', `Привет, <b>${esc(m.name)}</b> · план на <b>${esc(m.date)}</b>`);
-    setText('#top-fetch', '—');
-    setText('#tab-tasks-c', '·' + (getPoolTasks().length || 0));
-    return;
-  }
   const d = state.data;
   const h = d.health || {};
   const meta = h.agents ? h.agents.length : (d.agents_roster?.length ?? (d.agents && Array.isArray(d.agents) ? d.agents.length : '?'));
@@ -3959,7 +4138,192 @@ function emojiFor(id, e) {
   return map[id] || '🤖';
 }
 
-const topologyState = { hoverId: null };
+const topologyState = { hoverId: null, model: null, layout: null, drag: null };
+const TOPOLOGY_LAYOUT_KEY = 'felpik-topology-layout';
+
+function loadTopologyLayout() {
+  if (topologyState.layout) return topologyState.layout;
+  try {
+    topologyState.layout = JSON.parse(localStorage.getItem(TOPOLOGY_LAYOUT_KEY) || '{}');
+  } catch (_) {
+    topologyState.layout = {};
+  }
+  return topologyState.layout;
+}
+
+function persistTopologyLayout(nodes) {
+  const layout = {};
+  for (const n of nodes) layout[n.id] = { x: n.x, y: n.y };
+  topologyState.layout = layout;
+  try { localStorage.setItem(TOPOLOGY_LAYOUT_KEY, JSON.stringify(layout)); } catch (_) {}
+}
+
+function topoNodeCenter(n) {
+  return { cx: n.x + n.w / 2, cy: n.y + n.h / 2 };
+}
+
+function topoNodeRadius(n) {
+  return Math.hypot(n.w, n.h) / 2 + 12;
+}
+
+function recalcTopologyBounds(model) {
+  if (!model.nodes.length) {
+    model.width = 480;
+    model.height = 300;
+    return;
+  }
+  let maxX = 0, maxY = 0;
+  for (const n of model.nodes) {
+    n.x = Math.max(8, n.x);
+    n.y = Math.max(8, n.y);
+    maxX = Math.max(maxX, n.x + n.w);
+    maxY = Math.max(maxY, n.y + n.h);
+  }
+  const pad = 28;
+  model.width = Math.max(maxX + pad, 480);
+  model.height = Math.max(maxY + pad, 300);
+}
+
+function simulateTopologyRepulsion(nodes, fixedId, strength = 0.55) {
+  const moves = new Map(nodes.map(n => [n.id, { dx: 0, dy: 0 }]));
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i], b = nodes[j];
+      const ac = topoNodeCenter(a), bc = topoNodeCenter(b);
+      let dx = bc.cx - ac.cx;
+      let dy = bc.cy - ac.cy;
+      const dist = Math.hypot(dx, dy) || 0.001;
+      const minDist = topoNodeRadius(a) + topoNodeRadius(b);
+      if (dist >= minDist) continue;
+      const push = ((minDist - dist) / dist) * strength * 0.5;
+      const fx = dx * push;
+      const fy = dy * push;
+      if (a.id !== fixedId) { moves.get(a.id).dx -= fx; moves.get(a.id).dy -= fy; }
+      if (b.id !== fixedId) { moves.get(b.id).dx += fx; moves.get(b.id).dy += fy; }
+    }
+  }
+  for (const n of nodes) {
+    if (n.id === fixedId) continue;
+    const m = moves.get(n.id);
+    n.x = Math.max(8, n.x + m.dx);
+    n.y = Math.max(8, n.y + m.dy);
+  }
+}
+
+function relaxTopologyLayout(model, iterations = 18) {
+  for (let i = 0; i < iterations; i++) simulateTopologyRepulsion(model.nodes, null, 0.45);
+  recalcTopologyBounds(model);
+}
+
+function applySavedTopologyLayout(model) {
+  const saved = loadTopologyLayout();
+  let applied = false;
+  for (const n of model.nodes) {
+    const pos = saved[n.id];
+    if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+      n.x = pos.x;
+      n.y = pos.y;
+      applied = true;
+    }
+  }
+  if (applied) relaxTopologyLayout(model, 12);
+  else relaxTopologyLayout(model, 8);
+}
+
+function updateTopologyDom(host, model) {
+  const inner = host.querySelector('.topology-inner');
+  if (inner) {
+    inner.style.width = model.width + 'px';
+    inner.style.height = model.height + 'px';
+  }
+  const svg = host.querySelector('.topology-edges');
+  if (svg) {
+    svg.setAttribute('viewBox', `0 0 ${model.width} ${model.height}`);
+    const lines = svg.querySelectorAll('line');
+    model.edges.forEach((e, i) => {
+      const a = model.nodes.find(n => n.id === e.from);
+      const b = model.nodes.find(n => n.id === e.to);
+      const line = lines[i];
+      if (!a || !b || !line) return;
+      const pt = topoEdgeAnchors(a, b);
+      line.setAttribute('x1', pt.x1);
+      line.setAttribute('y1', pt.y1);
+      line.setAttribute('x2', pt.x2);
+      line.setAttribute('y2', pt.y2);
+    });
+  }
+  host.querySelectorAll('.topo-node').forEach(el => {
+    const n = model.nodes.find(nn => nn.id === el.dataset.topoId);
+    if (n) {
+      el.style.left = n.x + 'px';
+      el.style.top = n.y + 'px';
+    }
+  });
+}
+
+function runTopologySettle(host, model, frames = 28) {
+  let f = 0;
+  function tick() {
+    if (f >= frames || topologyState.drag) return;
+    simulateTopologyRepulsion(model.nodes, null, 0.38);
+    recalcTopologyBounds(model);
+    updateTopologyDom(host, model);
+    f++;
+    if (f < frames) requestAnimationFrame(tick);
+    else persistTopologyLayout(model.nodes);
+  }
+  requestAnimationFrame(tick);
+}
+
+function wireTopologyDrag(host, model) {
+  host.querySelectorAll('.topo-node').forEach(el => {
+    el.addEventListener('pointerdown', ev => {
+      if (ev.button !== 0) return;
+      const id = el.dataset.topoId;
+      const node = model.nodes.find(n => n.id === id);
+      if (!node) return;
+      ev.preventDefault();
+      el.setPointerCapture(ev.pointerId);
+      el.classList.add('dragging');
+      const drag = {
+        id, el, node, pointerId: ev.pointerId,
+        startX: ev.clientX, startY: ev.clientY,
+        originX: node.x, originY: node.y, moved: false,
+      };
+      topologyState.drag = drag;
+      const onMove = e => {
+        if (e.pointerId !== drag.pointerId) return;
+        const dx = e.clientX - drag.startX;
+        const dy = e.clientY - drag.startY;
+        if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+        node.x = Math.max(8, drag.originX + dx);
+        node.y = Math.max(8, drag.originY + dy);
+        for (let i = 0; i < 7; i++) simulateTopologyRepulsion(model.nodes, id, 0.68);
+        recalcTopologyBounds(model);
+        updateTopologyDom(host, model);
+        topologyState.model = model;
+      };
+      const onUp = e => {
+        if (e.pointerId !== drag.pointerId) return;
+        el.releasePointerCapture(drag.pointerId);
+        el.classList.remove('dragging');
+        el.removeEventListener('pointermove', onMove);
+        el.removeEventListener('pointerup', onUp);
+        el.removeEventListener('pointercancel', onUp);
+        topologyState.drag = null;
+        if (!drag.moved) {
+          onTopologyNodeClick(node, e);
+          return;
+        }
+        persistTopologyLayout(model.nodes);
+        runTopologySettle(host, model);
+      };
+      el.addEventListener('pointermove', onMove);
+      el.addEventListener('pointerup', onUp);
+      el.addEventListener('pointercancel', onUp);
+    });
+  });
+}
 
 function clawDashUrl(path) {
   const base = state.data?.portal?.clawDash || 'http://127.0.0.1:3939';
@@ -3986,6 +4350,29 @@ function cronEdgeColor(job) {
   if (cls === 'err') return 'var(--err)';
   if (cls === 'warn') return 'var(--warn)';
   return job.enabled ? 'var(--ok)' : 'var(--line-2)';
+}
+
+function topoEdgeAnchors(a, b) {
+  if (a.kind === 'agent' && b.kind === 'agent') {
+    return {
+      x1: a.x + a.w / 2,
+      y1: a.y + a.h / 2,
+      x2: b.x + b.w / 2,
+      y2: b.y + b.h / 2,
+    };
+  }
+  return {
+    x1: a.x + a.w / 2,
+    y1: a.y + (a.kind === 'channel' ? a.h : 0),
+    x2: b.x + b.w / 2,
+    y2: b.y + (b.kind === 'cron' ? 0 : b.h),
+  };
+}
+
+function agentLinkEdgeColor(kind) {
+  if (kind === 'spawn') return 'var(--accent)';
+  if (kind === 'task') return 'var(--warn)';
+  return 'var(--info)';
 }
 
 function buildTopologyModel(data) {
@@ -4087,6 +4474,26 @@ function buildTopologyModel(data) {
     }
   });
 
+  const rosterIds = new Set(agents.map(a => a.id));
+  for (const link of (data.agent_links || [])) {
+    if (!rosterIds.has(link.fromAgent) || !rosterIds.has(link.toAgent)) continue;
+    const from = nodes.find(n => n.kind === 'agent' && n.agentId === link.fromAgent);
+    const to = nodes.find(n => n.kind === 'agent' && n.agentId === link.toAgent);
+    if (!from || !to) continue;
+    const kind = link.kind || 'delegate';
+    edges.push({
+      id: `e-agent-${link.fromAgent}-${link.toAgent}`,
+      from: from.id, to: to.id,
+      kind: 'agent-link',
+      linkKind: kind,
+      color: agentLinkEdgeColor(kind),
+      animated: kind === 'spawn',
+      dash: kind === 'delegate' ? '7 5' : '',
+      label: link.label || kind,
+      count: link.count || 1,
+    });
+  }
+
   const maxX = nodes.reduce((m, n) => Math.max(m, n.x + n.w), 0) + 40;
   const maxY = nodes.reduce((m, n) => Math.max(m, n.y + n.h), 0) + 40;
   let minX = nodes.reduce((m, n) => Math.min(m, n.x), Infinity);
@@ -4155,12 +4562,17 @@ function renderTopologyInto(hostId) {
   const host = $(hostId);
   if (!host || !state.data) return;
   const model = buildTopologyModel(state.data);
+  applySavedTopologyLayout(model);
   topologyState.model = model;
   const hover = topologyState.hoverId;
   const connected = hover ? topologyConnected(hover, model.edges) : null;
 
   const legend = `<div class="topology-legend"><b>Legend</b>
     <div class="row">🤖 Agent</div><div class="row">📡 Channel</div><div class="row">⏱ Cron</div>
+    <div class="row">↔ Agent link</div>
+    <div class="row"><span class="dot" style="background:var(--info)"></span> delegate</div>
+    <div class="row"><span class="dot" style="background:var(--accent)"></span> spawn</div>
+    <div class="row">✋ Drag · отталкивание</div>
     <div class="row" style="margin-top:4px;border-top:1px solid var(--line);padding-top:4px">
       <span class="dot" style="background:var(--ok)"></span> healthy
       <span class="dot" style="background:var(--err);margin-left:6px"></span> error
@@ -4170,14 +4582,18 @@ function renderTopologyInto(hostId) {
     const a = model.nodes.find(n => n.id === e.from);
     const b = model.nodes.find(n => n.id === e.to);
     if (!a || !b) return '';
-    const x1 = a.x + a.w / 2;
-    const y1 = a.y + (a.kind === 'channel' ? a.h : 0);
-    const x2 = b.x + b.w / 2;
-    const y2 = b.y + (b.kind === 'cron' ? 0 : b.h);
+    const pt = topoEdgeAnchors(a, b);
     const dim = connected && !(connected.has(e.from) && connected.has(e.to));
     const hl = connected && connected.has(e.from) && connected.has(e.to);
-    const dash = e.animated ? '4 4' : '';
-    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${e.color}" stroke-width="${hl ? 2.5 : 1.8}" stroke-dasharray="${dash}" class="${dim ? 'dim' : (hl ? 'hl' : '')}" />`;
+    const dash = e.dash || (e.animated ? '4 4' : '');
+    const cls = [
+      dim ? 'dim' : (hl ? 'hl' : ''),
+      e.kind === 'agent-link' ? 'agent-link' : '',
+    ].filter(Boolean).join(' ');
+    const title = e.kind === 'agent-link'
+      ? `${esc(e.label || e.linkKind || 'link')}`
+      : '';
+    return `<line x1="${pt.x1}" y1="${pt.y1}" x2="${pt.x2}" y2="${pt.y2}" stroke="${e.color}" stroke-width="${hl ? 2.8 : (e.kind === 'agent-link' ? 2.2 : 1.8)}" stroke-dasharray="${dash}" class="${cls}">${title ? `<title>${title}</title>` : ''}</line>`;
   }).join('');
 
   const nodeHtml = model.nodes.map(n => {
@@ -4207,7 +4623,6 @@ function renderTopologyInto(hostId) {
     const id = el.dataset.topoId;
     const node = model.nodes.find(n => n.id === id);
     if (!node) return;
-    el.addEventListener('click', ev => onTopologyNodeClick(node, ev));
     el.addEventListener('mouseenter', () => {
       topologyState.hoverId = id;
       applyTopologyHover('#topology-full', id);
@@ -4219,6 +4634,7 @@ function renderTopologyInto(hostId) {
       applyTopologyHover('#ov-topology', null);
     });
   });
+  wireTopologyDrag(host, model);
 }
 
 function renderTopologyHosts() {
@@ -4433,7 +4849,6 @@ function render() {
 
 // boot
 setText('#dash-url', location.port ? ':' + location.port : ':18790');
-applyStudentShell();
 syncNavUI(state.tab);
 initSidebarToggle();
 initKanbanTaskUi();
@@ -4441,7 +4856,8 @@ initCalendarUi();
 initChatUi();
 primeChatLinks();
 tick();
-setPoll(IS_STUDENT ? 15000 : 30000);
+setPoll(30000);
 </script>
+<script src="/telegram-miniapp.js" defer></script>
 </body>
 </html>
