@@ -1,0 +1,84 @@
+[Unit]
+Description=Golden Hour Study Bot (OpenClaw Gateway)
+Documentation=https://github.com/margoshkagt-star/Golden-Hour
+# Soft ordering: prefer network and the local Ollama fallback up first.
+# Not a hard Requires= — the bot still starts if Ollama is absent (the
+# fallback simply isn't reachable until Ollama comes up).
+After=network-online.target ollama.service
+Wants=network-online.target
+
+# Crash-loop guard MUST live in [Unit], not [Service] (systemd ignores it in
+# [Service]). After 5 starts within 120s systemd stops restarting and the unit
+# enters 'failed' — preventing an infinite restart loop.
+StartLimitIntervalSec=120s
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=golden-hour
+Group=golden-hour
+WorkingDirectory=/opt/golden-hour
+
+# --- Environment ---
+# Defaults first; EnvironmentFile LAST so anything in /opt/golden-hour/.env
+# overrides these (systemd applies later directives over earlier ones).
+# HOME makes OpenClaw resolve ~/.openclaw to /opt/golden-hour/.openclaw.
+Environment=HOME=/opt/golden-hour
+Environment=NODE_ENV=production
+Environment=TZ=Europe/Moscow
+# OpenClaw config + gateway control plane (loopback, non-standard high port).
+Environment=OPENCLAW_CONFIG_PATH=/opt/golden-hour/.openclaw/openclaw.json
+Environment=OPENCLAW_GATEWAY_BIND=loopback
+Environment=OPENCLAW_GATEWAY_PORT=47854
+# Non-standard app/webhook ports (long-poll by default — no inbound needed).
+Environment=APP_PORT=47832
+Environment=WEBHOOK_PORT=47843
+
+# Secrets + overrides (chmod 600, owned by golden-hour). Leading '-' = optional.
+# Placed AFTER the defaults so .env values win.
+EnvironmentFile=-/opt/golden-hour/.env
+
+# --- Run ---
+# systemd expands ${VAR} from the environment above / EnvironmentFile.
+ExecStart=/usr/local/bin/openclaw gateway --bind ${OPENCLAW_GATEWAY_BIND} --port ${OPENCLAW_GATEWAY_PORT}
+
+# Do NOT use ExecReload — OpenClaw's SIGHUP behaviour is unverified.
+# Use 'systemctl restart golden-hour' for all updates.
+# ExecReload=/bin/kill -HUP $MAINPID
+
+# --- Restart policy ---
+# StartLimit* live in [Unit] above. Monitor: journalctl -u golden-hour -f
+Restart=always
+RestartSec=10s
+
+# Graceful shutdown: give in-flight requests time to finish (writes must be
+# atomic: write to .tmp then rename() to prevent partial-write corruption).
+TimeoutStopSec=30s
+
+# --- Resource limits ---
+# Node.js uses several threads (libuv threadpool + GC + main). 64 is too low.
+# Ollama runs as its own service, so this caps only the Node gateway. 512M is
+# too tight for concurrent multi-user LLM streaming — a hard cgroup kill would
+# bypass TimeoutStopSec. 768M default; raise if OOM kills appear in journal.
+MemoryMax=768M
+MemoryHigh=640M
+TasksMax=256
+LimitNOFILE=65536
+
+# --- Hardening ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+# Allow writing only to project dir; PrivateTmp gives its own /tmp already.
+# Do NOT add /tmp here — PrivateTmp already provides a private writable /tmp,
+# and adding /tmp to ReadWritePaths would re-open the real shared /tmp.
+ReadWritePaths=/opt/golden-hour
+PrivateTmp=yes
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target
