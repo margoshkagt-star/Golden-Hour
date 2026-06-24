@@ -1,0 +1,9 @@
+# Docker variant of prometheus scrape (host dashboard on Windows)
+global:
+  scrape_interval: 30s
+
+scrape_configs:
+  - job_name: openclaw
+    metrics_path: /api/prometheus/metrics
+    static_configs:
+      - targets: ["host.docker.internal:18790"]
