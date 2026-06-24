@@ -10,7 +10,15 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$EnvFile = "C:\Users\Admin\.openclaw\.env"
+
+function Get-OpenClawEnvFile {
+    if ($env:OPENCLAW_HOME) { return Join-Path $env:OPENCLAW_HOME ".env" }
+    $default = Join-Path $env:USERPROFILE ".openclaw\.env"
+    if (Test-Path $default) { return $default }
+    return $default
+}
+
+$EnvFile = Get-OpenClawEnvFile
 
 function Read-DotEnvKey([string]$Key) {
     if (-not (Test-Path $EnvFile)) { return "" }

@@ -28,3 +28,15 @@ cd grafana
 ```
 
 Подробности: `STATUS.md`
+
+## Telegram Mini App
+
+Мобильный Kanban/календарь внутри Telegram-бота.
+
+```powershell
+cd dashboard
+.\setup_telegram_miniapp.ps1
+```
+
+**Полная инструкция:** [TELEGRAM_MINIAPP.md](TELEGRAM_MINIAPP.md)  
+**Шаблон `.env`:** [telegram-miniapp.env.example](telegram-miniapp.env.example)
