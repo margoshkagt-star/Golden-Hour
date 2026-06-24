@@ -255,6 +255,11 @@
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
+    cursor: grab;
+  }
+  .topology-wrap.topology-panning {
+    cursor: grabbing;
+    user-select: none;
   }
   #topology-full.topology-wrap {
     flex: 1; min-height: 0; max-height: none; height: 100%;
@@ -270,7 +275,7 @@
   }
   #view-topology .topology-card h2 { flex-shrink: 0; margin-bottom: 6px; }
   #view-topology .topology-hint { flex-shrink: 0; }
-  .topology-inner { position: relative; min-height: 300px; }
+  .topology-inner { position: relative; min-height: 300px; transform-origin: 0 0; }
   .topology-legend {
     position: absolute; top: 10px; left: 10px; z-index: 3;
     background: rgba(13,17,23,0.92); border: 1px solid var(--line-2);
@@ -285,9 +290,9 @@
   .topology-edges line { stroke-linecap: round; transition: opacity 0.2s, stroke-width 0.2s; }
   .topology-edges line.dim { opacity: 0.08; }
   .topology-edges line.hl { opacity: 1; stroke-width: 2.5; }
-  .topology-edges line.agent-link { stroke-width: 2.2; opacity: 0.85; }
-  .topology-edges line.agent-link.dim { opacity: 0.1; }
-  .topology-edges line.agent-link.hl { opacity: 1; stroke-width: 3; }
+  .topology-edges line.agent-link { stroke-width: 2.4; opacity: 0.92; }
+  .topology-edges line.agent-link.dim { opacity: 0.14; }
+  .topology-edges line.agent-link.hl { opacity: 1; stroke-width: 3.2; }
   .topo-node {
     position: absolute; z-index: 1; cursor: grab;
     transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
@@ -330,6 +335,7 @@
   .topo-channel.on { border-color: rgba(45,212,160,0.45); }
   .topo-channel.off { opacity: 0.6; }
   .topology-hint { font-size: 11px; color: var(--fg-3); margin: 0 0 8px; }
+  .topology-scaler { position: relative; flex-shrink: 0; }
 
   /* embedded chat */
   .chat-panel { display: flex; flex-direction: column; height: min(78vh, 820px); min-height: 420px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-2); overflow: hidden; }
@@ -1300,7 +1306,7 @@
   <div class="view" id="view-topology">
     <section class="card topology-card">
       <h2>System Topology</h2>
-      <p class="topology-hint">Перетаскивайте блоки — они отталкиваются друг от друга · клик по агенту → чат · Shift+клик → Claw Dash · cron → Crons · channel → Channels.</p>
+      <p class="topology-hint">Перетаскивайте блоки — отталкивание · зажмите фон и тяните — перемещение · колёсико — масштаб · клик по агенту → чат.</p>
       <div id="topology-full" class="topology-wrap"></div>
     </section>
   </div>
@@ -4140,8 +4146,120 @@ function emojiFor(id, e) {
   return map[id] || '🤖';
 }
 
-const topologyState = { hoverId: null, model: null, layout: null, drag: null };
+const topologyState = { hoverId: null, model: null, layout: null, drag: null, zoomByHost: {} };
 const TOPOLOGY_LAYOUT_KEY = 'felpik-topology-layout';
+const TOPOLOGY_ZOOM_KEY = 'felpik-topology-zoom';
+
+function topologyHostKey(host) {
+  if (!host) return '#topology-full';
+  return host.id ? '#' + host.id : '#topology-full';
+}
+
+function getTopologyZoom(host) {
+  const key = topologyHostKey(host);
+  if (topologyState.zoomByHost[key] != null) return topologyState.zoomByHost[key];
+  try {
+    const saved = JSON.parse(localStorage.getItem(TOPOLOGY_ZOOM_KEY) || '{}');
+    const z = saved[key];
+    if (Number.isFinite(z) && z >= 0.2 && z <= 2.5) {
+      topologyState.zoomByHost[key] = z;
+      return z;
+    }
+  } catch (_) { /* ignore */ }
+  return 1;
+}
+
+function setTopologyZoom(host, zoom, model) {
+  if (!host) return;
+  const key = topologyHostKey(host);
+  const z = Math.min(2.5, Math.max(0.2, zoom));
+  topologyState.zoomByHost[key] = z;
+  try {
+    const saved = JSON.parse(localStorage.getItem(TOPOLOGY_ZOOM_KEY) || '{}');
+    saved[key] = z;
+    localStorage.setItem(TOPOLOGY_ZOOM_KEY, JSON.stringify(saved));
+  } catch (_) { /* ignore */ }
+  applyTopologyZoom(host, model || topologyState.model);
+}
+
+function topologyFitZoom(host, model) {
+  if (!host || !model) return 1;
+  const pad = 36;
+  const w = Math.max(host.clientWidth - pad, 120);
+  const h = Math.max(host.clientHeight - pad, 120);
+  return Math.min(1, w / model.width, h / model.height);
+}
+
+function applyTopologyZoom(host, model) {
+  if (!host || !model) return;
+  const zoom = getTopologyZoom(host);
+  const scaler = host.querySelector('.topology-scaler');
+  const inner = host.querySelector('.topology-inner');
+  if (scaler) {
+    scaler.style.width = Math.ceil(model.width * zoom) + 'px';
+    scaler.style.height = Math.ceil(model.height * zoom) + 'px';
+  }
+  if (inner) {
+    inner.style.transform = `scale(${zoom})`;
+    inner.style.width = model.width + 'px';
+    inner.style.height = model.height + 'px';
+  }
+}
+
+function topologyHasSavedZoom(host) {
+  const key = topologyHostKey(host);
+  try {
+    const saved = JSON.parse(localStorage.getItem(TOPOLOGY_ZOOM_KEY) || '{}');
+    return Number.isFinite(saved[key]);
+  } catch (_) {
+    return false;
+  }
+}
+
+function wireTopologyZoom(host, model) {
+  if (host.dataset.topoZoomWheel) return;
+  host.dataset.topoZoomWheel = '1';
+  host.addEventListener('wheel', e => {
+    e.preventDefault();
+    const factor = e.deltaY > 0 ? 0.92 : 1.08;
+    setTopologyZoom(host, getTopologyZoom(host) * factor, model);
+  }, { passive: false });
+}
+
+function wireTopologyPan(host) {
+  if (host.dataset.topoPan) return;
+  host.dataset.topoPan = '1';
+  host.addEventListener('pointerdown', ev => {
+    if (ev.button !== 0) return;
+    if (ev.target.closest('.topo-node')) return;
+    ev.preventDefault();
+    const pan = {
+      pointerId: ev.pointerId,
+      startX: ev.clientX,
+      startY: ev.clientY,
+      scrollLeft: host.scrollLeft,
+      scrollTop: host.scrollTop,
+    };
+    host.setPointerCapture(ev.pointerId);
+    host.classList.add('topology-panning');
+    const onMove = e => {
+      if (e.pointerId !== pan.pointerId) return;
+      host.scrollLeft = pan.scrollLeft - (e.clientX - pan.startX);
+      host.scrollTop = pan.scrollTop - (e.clientY - pan.startY);
+    };
+    const onUp = e => {
+      if (e.pointerId !== pan.pointerId) return;
+      host.releasePointerCapture(pan.pointerId);
+      host.classList.remove('topology-panning');
+      host.removeEventListener('pointermove', onMove);
+      host.removeEventListener('pointerup', onUp);
+      host.removeEventListener('pointercancel', onUp);
+    };
+    host.addEventListener('pointermove', onMove);
+    host.addEventListener('pointerup', onUp);
+    host.addEventListener('pointercancel', onUp);
+  });
+}
 
 function loadTopologyLayout() {
   if (topologyState.layout) return topologyState.layout;
@@ -4238,14 +4356,14 @@ function updateTopologyDom(host, model) {
     inner.style.width = model.width + 'px';
     inner.style.height = model.height + 'px';
   }
+  applyTopologyZoom(host, model);
   const svg = host.querySelector('.topology-edges');
   if (svg) {
     svg.setAttribute('viewBox', `0 0 ${model.width} ${model.height}`);
-    const lines = svg.querySelectorAll('line');
-    model.edges.forEach((e, i) => {
+    model.edges.forEach(e => {
       const a = model.nodes.find(n => n.id === e.from);
       const b = model.nodes.find(n => n.id === e.to);
-      const line = lines[i];
+      const line = svg.querySelector(`line[data-edge-id="${e.id}"]`);
       if (!a || !b || !line) return;
       const pt = topoEdgeAnchors(a, b);
       line.setAttribute('x1', pt.x1);
@@ -4293,10 +4411,11 @@ function wireTopologyDrag(host, model) {
         originX: node.x, originY: node.y, moved: false,
       };
       topologyState.drag = drag;
+      const zoom = getTopologyZoom(host);
       const onMove = e => {
         if (e.pointerId !== drag.pointerId) return;
-        const dx = e.clientX - drag.startX;
-        const dy = e.clientY - drag.startY;
+        const dx = (e.clientX - drag.startX) / zoom;
+        const dy = (e.clientY - drag.startY) / zoom;
         if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
         node.x = Math.max(8, drag.originX + dx);
         node.y = Math.max(8, drag.originY + dy);
@@ -4354,14 +4473,27 @@ function cronEdgeColor(job) {
   return job.enabled ? 'var(--ok)' : 'var(--line-2)';
 }
 
+function topoRectEdgePoint(node, towardX, towardY) {
+  const cx = node.x + node.w / 2;
+  const cy = node.y + node.h / 2;
+  let dx = towardX - cx;
+  let dy = towardY - cy;
+  if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) {
+    return { x: cx, y: cy };
+  }
+  const hw = node.w / 2;
+  const hh = node.h / 2;
+  const scale = 1 / Math.max(Math.abs(dx) / hw, Math.abs(dy) / hh);
+  return { x: cx + dx * scale, y: cy + dy * scale };
+}
+
 function topoEdgeAnchors(a, b) {
   if (a.kind === 'agent' && b.kind === 'agent') {
-    return {
-      x1: a.x + a.w / 2,
-      y1: a.y + a.h / 2,
-      x2: b.x + b.w / 2,
-      y2: b.y + b.h / 2,
-    };
+    const ac = { x: a.x + a.w / 2, y: a.y + a.h / 2 };
+    const bc = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+    const p1 = topoRectEdgePoint(a, bc.x, bc.y);
+    const p2 = topoRectEdgePoint(b, ac.x, ac.y);
+    return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
   }
   return {
     x1: a.x + a.w / 2,
@@ -4509,7 +4641,9 @@ function buildTopologyModel(data) {
   }
   const width = Math.max(maxX - minX + pad * 2, 480);
   const height = Math.max(maxY - minY + pad * 2, 300);
-  return { nodes, edges, width, height };
+  const agentEdges = edges.filter(e => e.kind === 'agent-link');
+  const baseEdges = edges.filter(e => e.kind !== 'agent-link');
+  return { nodes, edges: [...baseEdges, ...agentEdges], width, height };
 }
 
 function topologyConnected(hoverId, edges) {
@@ -4550,8 +4684,8 @@ function applyTopologyHover(hostId, hoverId) {
   host.querySelectorAll('.topo-node').forEach(el => {
     el.classList.toggle('dim', !!(connected && !connected.has(el.dataset.topoId)));
   });
-  host.querySelectorAll('.topology-edges line').forEach((line, i) => {
-    const e = model.edges[i];
+  host.querySelectorAll('.topology-edges line').forEach(line => {
+    const e = model.edges.find(ed => ed.id === line.dataset.edgeId);
     if (!e) return;
     const onPath = connected && connected.has(e.from) && connected.has(e.to);
     const dim = connected && !onPath;
@@ -4575,10 +4709,25 @@ function renderTopologyInto(hostId) {
     <div class="row"><span class="dot" style="background:var(--info)"></span> delegate</div>
     <div class="row"><span class="dot" style="background:var(--accent)"></span> spawn</div>
     <div class="row">✋ Drag · отталкивание</div>
+    <div class="row">✋ Фон · перемещение</div>
+    <div class="row">🔍 Колёсико · масштаб</div>
     <div class="row" style="margin-top:4px;border-top:1px solid var(--line);padding-top:4px">
       <span class="dot" style="background:var(--ok)"></span> healthy
       <span class="dot" style="background:var(--err);margin-left:6px"></span> error
     </div></div>`;
+
+  const topoMarkerPrefix = (host.id || 'topo') + '-mk-';
+  const markerDefs = `<defs>
+    <marker id="${topoMarkerPrefix}delegate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/>
+    </marker>
+    <marker id="${topoMarkerPrefix}spawn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/>
+    </marker>
+    <marker id="${topoMarkerPrefix}task" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/>
+    </marker>
+  </defs>`;
 
   const edgeSvg = model.edges.map(e => {
     const a = model.nodes.find(n => n.id === e.from);
@@ -4595,7 +4744,11 @@ function renderTopologyInto(hostId) {
     const title = e.kind === 'agent-link'
       ? `${esc(e.label || e.linkKind || 'link')}`
       : '';
-    return `<line x1="${pt.x1}" y1="${pt.y1}" x2="${pt.x2}" y2="${pt.y2}" stroke="${e.color}" stroke-width="${hl ? 2.8 : (e.kind === 'agent-link' ? 2.2 : 1.8)}" stroke-dasharray="${dash}" class="${cls}">${title ? `<title>${title}</title>` : ''}</line>`;
+    const sw = hl ? 3.2 : (e.kind === 'agent-link' ? 2.4 : 1.8);
+    const marker = e.kind === 'agent-link'
+      ? ` marker-end="url(#${topoMarkerPrefix}${esc(e.linkKind || 'delegate')})"`
+      : '';
+    return `<line data-edge-id="${esc(e.id)}" x1="${pt.x1}" y1="${pt.y1}" x2="${pt.x2}" y2="${pt.y2}" stroke="${e.color}" stroke-width="${sw}" stroke-dasharray="${dash}" class="${cls}"${marker}>${title ? `<title>${title}</title>` : ''}</line>`;
   }).join('');
 
   const nodeHtml = model.nodes.map(n => {
@@ -4614,10 +4767,23 @@ function renderTopologyInto(hostId) {
     return `<div class="topo-node topo-channel ${n.connected ? 'on' : 'off'}${dim ? ' dim' : ''}" data-topo-id="${esc(n.id)}" style="left:${n.x}px;top:${n.y}px;min-width:${n.w}px" title="Открыть Channels">${inner}</div>`;
   }).join('');
 
-  host.innerHTML = `${legend}<div class="topology-inner" style="width:${model.width}px;height:${model.height}px">
-    <svg class="topology-edges" viewBox="0 0 ${model.width} ${model.height}" preserveAspectRatio="xMinYMin meet"><g>${edgeSvg}</g></svg>
+  const zoom = (() => {
+    if (!topologyHasSavedZoom(host)) {
+      const fit = topologyFitZoom(host, model);
+      topologyState.zoomByHost[topologyHostKey(host)] = fit;
+      return fit;
+    }
+    return getTopologyZoom(host);
+  })();
+  const scalerW = Math.ceil(model.width * zoom);
+  const scalerH = Math.ceil(model.height * zoom);
+
+  host.innerHTML = `${legend}
+  <div class="topology-scaler" style="width:${scalerW}px;height:${scalerH}px">
+  <div class="topology-inner" style="width:${model.width}px;height:${model.height}px;transform:scale(${zoom})">
+    <svg class="topology-edges" viewBox="0 0 ${model.width} ${model.height}" preserveAspectRatio="xMinYMin meet">${markerDefs}<g>${edgeSvg}</g></svg>
     ${nodeHtml}
-  </div>`;
+  </div></div>`;
   host.scrollLeft = 0;
   host.scrollTop = 0;
 
@@ -4637,6 +4803,8 @@ function renderTopologyInto(hostId) {
     });
   });
   wireTopologyDrag(host, model);
+  wireTopologyZoom(host, model);
+  wireTopologyPan(host);
 }
 
 function renderTopologyHosts() {

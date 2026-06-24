@@ -651,7 +651,17 @@ def add_task_to_pool(payload: dict) -> dict:
         tasks = []
         data["tasks"] = tasks
     now = datetime.now().astimezone().isoformat(timespec="seconds")
-    task_id = str(payload.get("id") or f"DASH-{int(time.time())}")
+    source = str(payload.get("source") or "dashboard").strip().lower() or "dashboard"
+    if source not in ("dashboard", "agent", "telegram", "miniapp", "openclaw"):
+        source = "agent"
+    if payload.get("id"):
+        task_id = str(payload.get("id")).strip()
+    elif source == "agent":
+        task_id = f"AGENT-{int(time.time())}"
+    else:
+        task_id = f"DASH-{int(time.time())}"
+    if any(str(t.get("id")) == task_id for t in tasks):
+        raise ValueError(f"task id already exists: {task_id}")
     status = str(payload.get("status") or "pending").strip().lower()
     task = {
         "id": task_id,
@@ -665,24 +675,44 @@ def add_task_to_pool(payload: dict) -> dict:
         "created_at": now,
         "updated_at": now,
         "tags": payload.get("tags") if isinstance(payload.get("tags"), list) else [],
-        "source": "dashboard",
+        "source": source,
     }
+    created_by = str(payload.get("created_by") or "").strip()
+    if created_by:
+        task["created_by"] = created_by
     tag = str(payload.get("tag") or "").strip().lower()
     if tag:
         task["tag"] = tag
     week_goal = bool(payload.get("week_goal"))
-    if week_goal:
-        task["week_goal"] = True
     due = str(payload.get("due_date") or "").strip()[:10]
     if due:
         task["due_date"] = due
         task.pop("week_goal", None)
-    elif not week_goal:
+    elif week_goal:
+        task["week_goal"] = True
+    elif source == "dashboard":
         task["due_date"] = now[:10]
     tasks.append(task)
     data["updated_at"] = now
     _write_json(TASK_POOL_ACTIVE, data)
     return task
+
+
+def list_tasks_from_pool(status: str | None = None) -> dict:
+    data = _read_json(TASK_POOL_ACTIVE)
+    if not isinstance(data, dict):
+        return {"version": "1.0", "tasks": [], "updated_at": None}
+    tasks = data.get("tasks")
+    if not isinstance(tasks, list):
+        tasks = []
+    if status:
+        want = str(status).strip().lower()
+        tasks = [t for t in tasks if str(t.get("status") or "").lower() == want]
+    return {
+        "version": data.get("version", "1.0"),
+        "tasks": tasks,
+        "updated_at": data.get("updated_at"),
+    }
 
 
 def update_task_in_pool(task_id: str, updates: dict) -> dict:
@@ -864,6 +894,17 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, p.read_bytes())
             else:
                 self._send(404, b"inbox not found", "text/plain; charset=utf-8")
+            return
+        if path == "/api/tasks":
+            qs = parse_qs(parsed.query)
+            status = (qs.get("status") or [None])[0]
+            if status is not None:
+                status = str(status).strip() or None
+            body = json.dumps(
+                {"ok": True, **list_tasks_from_pool(status)},
+                ensure_ascii=False,
+            ).encode("utf-8")
+            self._send(200, body)
             return
         if path == "/api/file":
             qs = parse_qs(parsed.query)
