@@ -1,0 +1,1 @@
+Get-Content 'C:\Users\Admin\.openclaw\workspace\dashboard\dashboard.html' | Select-String -Pattern 'renderTasks|state.data.tasks|errBanner|tasks_running' | ForEach-Object { $_.LineNumber.ToString() + ': ' + $_.Line }

@@ -8,6 +8,8 @@ Run:
 """
 import argparse
 import asyncio
+import hashlib
+import hmac
 import json
 import os
 import subprocess
@@ -16,51 +18,25 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qsl, unquote
 
 # Force UTF-8 on Windows
 if sys.platform == "win32":
     sys.stdout = open(sys.stdout.fileno(), mode="w", encoding="utf-8", buffering=1)
     sys.stderr = open(sys.stderr.fileno(), mode="w", encoding="utf-8", buffering=1)
 
-def _resolve_openclaw_home() -> Path:
-    env = os.environ.get("OPENCLAW_HOME", "").strip()
-    if env:
-        return Path(env).expanduser()
-    return Path.home() / ".openclaw"
-
-
-def _resolve_openclaw_cli(home: Path) -> str:
-    env = os.environ.get("OPENCLAW_CLI", "").strip()
-    if env and Path(env).expanduser().exists():
-        return str(Path(env).expanduser())
-    for candidate in (
-        Path.home() / "AppData" / "Roaming" / "npm" / "openclaw.cmd",
-        Path.home() / "AppData" / "Roaming" / "npm" / "openclaw",
-    ):
-        if candidate.exists():
-            return str(candidate)
-    return "openclaw"
-
-
-def _resolve_workspace(home: Path) -> Path:
-    cfg_path = home / "openclaw.json"
-    if cfg_path.exists():
-        try:
-            cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
-            ws = (cfg.get("agents") or {}).get("defaults", {}).get("workspace")
-            if ws:
-                return Path(ws).expanduser()
-        except Exception:
-            pass
-    return home / "workspace"
-
-
-OPENCLAW_HOME = _resolve_openclaw_home()
-OPENCLAW = _resolve_openclaw_cli(OPENCLAW_HOME)
-WORKSPACE = _resolve_workspace(OPENCLAW_HOME)
+OPENCLAW = r"C:\Users\Admin\AppData\Roaming\npm\openclaw.cmd"
+OPENCLAW_HOME = Path(r"C:\Users\Admin\.openclaw")
+WORKSPACE = OPENCLAW_HOME / "workspace"
 DASHBOARD_DIR = Path(__file__).parent
 STATIC_FILE = DASHBOARD_DIR / "dashboard.html"
 GATEWAY_CHAT_JS = DASHBOARD_DIR / "gateway-chat.js"
+TELEGRAM_MINIAPP_JS = DASHBOARD_DIR / "telegram-miniapp.js"
+TELEGRAM_MINIAPP_CSS = DASHBOARD_DIR / "telegram-miniapp.css"
+MINIAPP_BOOT = (
+    '<script>document.documentElement.classList.add("tg-miniapp");'
+    'sessionStorage.setItem("tg_miniapp","1");</script>'
+)
 OPENCLAW_JSON = OPENCLAW_HOME / "openclaw.json"
 AGENTS_DIR = OPENCLAW_HOME / "agents"
 
@@ -75,29 +51,76 @@ _snapshot_lock = threading.Lock()
 _snapshot_building = False
 
 
+def _read_env_file() -> dict[str, str]:
+    out: dict[str, str] = {}
+    env_path = OPENCLAW_HOME / ".env"
+    if not env_path.exists():
+        return out
+    for line in env_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, _, v = line.partition("=")
+        out[k.strip()] = v.strip().strip('"').strip("'")
+    return out
+
+
+def _load_telegram_bot_token() -> str:
+    for key in ("TELEGRAM_MINIAPP_BOT_TOKEN", "TELEGRAM_BOT_TOKEN", "TEAM_BOT_TOKEN"):
+        v = os.environ.get(key, "").strip()
+        if v:
+            return v
+    env = _read_env_file()
+    for key in ("TELEGRAM_MINIAPP_BOT_TOKEN", "TELEGRAM_BOT_TOKEN", "TEAM_BOT_TOKEN"):
+        v = env.get(key, "").strip()
+        if v:
+            return v
+    return ""
+
+
+def validate_telegram_init_data(init_data: str, bot_token: str) -> dict | None:
+    init_data = str(init_data or "").strip()
+    bot_token = str(bot_token or "").strip()
+    if not init_data or not bot_token:
+        return None
+    parsed = dict(parse_qsl(init_data, keep_blank_values=True))
+    received_hash = parsed.pop("hash", None)
+    if not received_hash:
+        return None
+    data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(parsed.items()))
+    secret_key = hmac.new(b"WebAppData", bot_token.encode("utf-8"), hashlib.sha256).digest()
+    computed = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
+    if computed != received_hash:
+        return None
+    user_raw = parsed.get("user") or "{}"
+    try:
+        user = json.loads(user_raw)
+    except json.JSONDecodeError:
+        user = {}
+    return {
+        "user": user,
+        "auth_date": parsed.get("auth_date"),
+        "query_id": parsed.get("query_id"),
+    }
+
+
+def telegram_miniapp_config() -> dict:
+    token = _load_telegram_bot_token()
+    public_url = os.environ.get("TELEGRAM_MINIAPP_URL", "").strip().rstrip("/")
+    return {
+        "hasBotToken": bool(token),
+        "publicUrl": public_url,
+        "miniappPath": "/miniapp",
+        "dashboardPath": "/dashboard.html?miniapp=1",
+    }
+
+
 def _load_gateway_token() -> str:
     tok = os.environ.get("GATEWAY_AUTH_TOKEN", "")
     if tok:
         return tok.strip()
-    env_path = OPENCLAW_HOME / ".env"
-    if env_path.exists():
-        for raw in env_path.read_text(encoding="utf-8", errors="replace").splitlines():
-            line = raw.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, val = line.split("=", 1)
-            if key.strip() == "GATEWAY_AUTH_TOKEN":
-                return val.strip().strip('"').strip("'")
-    secrets_path = OPENCLAW_HOME / "secrets.json"
-    if secrets_path.exists():
-        try:
-            data = json.loads(secrets_path.read_text(encoding="utf-8"))
-            tok = ((data.get("gateway") or {}).get("auth") or {}).get("token")
-            if tok:
-                return str(tok).strip()
-        except Exception:
-            pass
-    return ""
+    env = _read_env_file()
+    return env.get("GATEWAY_AUTH_TOKEN", "").strip()
 
 
 def chat_go_path(session: str = "agent:main:main") -> str:
@@ -136,8 +159,7 @@ def go_chat_html(session: str) -> bytes:
         msg = (
             "<!doctype html><html><body style='font-family:system-ui;padding:24px'>"
             "<h1>Нет GATEWAY_AUTH_TOKEN</h1>"
-            f"<p>Добавьте токен в <code>{OPENCLAW_HOME / '.env'}</code> "
-            "или <code>secrets.json</code> (gateway.auth.token) "
+            "<p>Добавьте токен в <code>C:\\Users\\Admin\\.openclaw\\.env</code> "
             "и перезапустите gateway.</p></body></html>"
         )
         return msg.encode("utf-8")
@@ -295,6 +317,115 @@ def load_channel_bindings() -> list[dict]:
             "accountId": match.get("accountId"),
         })
     return out
+
+
+def _agent_id_from_session_key(session_key: str) -> str | None:
+    if not session_key or not str(session_key).startswith("agent:"):
+        return None
+    parts = str(session_key).split(":")
+    return parts[1] if len(parts) >= 2 else None
+
+
+def _task_pool_items(pool) -> list[dict]:
+    if not pool:
+        return []
+    if isinstance(pool, list):
+        return [t for t in pool if isinstance(t, dict)]
+    if isinstance(pool, dict):
+        for key in ("tasks", "failed_tasks", "completed_tasks", "items"):
+            val = pool.get(key)
+            if isinstance(val, list):
+                return [t for t in val if isinstance(t, dict)]
+    return []
+
+
+def load_agent_links() -> list[dict]:
+    """Agent-to-agent edges for topology: delegate config, cross-agent spawns, tasks."""
+    merged: dict[tuple[str, str], dict] = {}
+    priority = {"spawn": 3, "task": 2, "delegate": 1}
+
+    def add(from_id: str, to_id: str, kind: str, count: int = 1) -> None:
+        if not from_id or not to_id or from_id == to_id:
+            return
+        key = (from_id, to_id)
+        label = {
+            "delegate": "может делегировать",
+            "spawn": f"{count} spawn" if count != 1 else "spawn",
+            "task": f"{count} task" if count != 1 else "task",
+        }.get(kind, kind)
+        cur = merged.get(key)
+        if not cur or priority.get(kind, 0) > priority.get(cur["kind"], 0):
+            merged[key] = {
+                "fromAgent": from_id,
+                "toAgent": to_id,
+                "kind": kind,
+                "count": count,
+                "label": label,
+            }
+        elif cur["kind"] == kind:
+            cur["count"] = int(cur.get("count") or 1) + count
+            if kind == "spawn":
+                cur["label"] = f"{cur['count']} spawn"
+            elif kind == "task":
+                cur["label"] = f"{cur['count']} task"
+
+    cfg = _read_json(OPENCLAW_JSON) or {}
+    for a in cfg.get("agents", {}).get("list", []):
+        if not isinstance(a, dict):
+            continue
+        from_id = a.get("id")
+        for to_id in (a.get("subagents") or {}).get("allowAgents") or []:
+            add(str(from_id), str(to_id), "delegate")
+
+    if AGENTS_DIR.is_dir():
+        spawn_counts: dict[tuple[str, str], int] = {}
+        for agent_dir in AGENTS_DIR.iterdir():
+            if not agent_dir.is_dir():
+                continue
+            store_path = agent_dir / "sessions" / "sessions.json"
+            if not store_path.exists():
+                continue
+            try:
+                store = json.loads(store_path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            for session_key, meta in store.items():
+                if not isinstance(meta, dict):
+                    continue
+                spawned = meta.get("spawnedBy") or meta.get("spawned_by")
+                if not spawned:
+                    continue
+                parent = _agent_id_from_session_key(str(spawned))
+                child = _agent_id_from_session_key(str(session_key))
+                if parent and child and parent != child:
+                    k = (parent, child)
+                    spawn_counts[k] = spawn_counts.get(k, 0) + 1
+        for (parent, child), cnt in spawn_counts.items():
+            add(parent, child, "spawn", cnt)
+
+    roster_ids = {a.get("id") for a in load_agents_roster() if a.get("id") and not a.get("_error")}
+    task_counts: dict[tuple[str, str], int] = {}
+    for path in (
+        WORKSPACE / "memory" / "task-pool" / "active.json",
+        WORKSPACE / "memory" / "task-pool" / "history.json",
+    ):
+        for task in _task_pool_items(_read_json(path)):
+            owner = str(task.get("agent") or "").strip()
+            sub = str(task.get("subagent_id") or task.get("subagentId") or "").strip()
+            runner = _agent_id_from_session_key(sub) if sub else None
+            if runner and owner and runner != owner and owner in roster_ids and runner in roster_ids:
+                k = (runner, owner)
+                task_counts[k] = task_counts.get(k, 0) + 1
+            elif owner and owner in roster_ids:
+                for dep in task.get("depends_on") or task.get("dependsOn") or []:
+                    dep_agent = str(dep).split(":")[0] if isinstance(dep, str) else ""
+                    if dep_agent in roster_ids and dep_agent != owner:
+                        k = (dep_agent, owner)
+                        task_counts[k] = task_counts.get(k, 0) + 1
+    for (src, dst), cnt in task_counts.items():
+        add(src, dst, "task", cnt)
+
+    return list(merged.values())
 
 
 def load_agents_roster() -> list[dict]:
@@ -462,6 +593,7 @@ def bootstrap() -> dict:
         "partial": True,
         "agents_roster": load_agents_roster(),
         "channel_bindings": load_channel_bindings(),
+        "agent_links": load_agent_links(),
         "history": _read_json(WORKSPACE / "memory" / "task-pool" / "history.json"),
         "active_pool": _read_json(WORKSPACE / "memory" / "task-pool" / "active.json"),
         "costs": costs,
@@ -493,6 +625,7 @@ async def _build_snapshot() -> dict:
         "active_pool": _read_json(WORKSPACE / "memory" / "task-pool" / "active.json"),
         "agents_roster": load_agents_roster(),
         "channel_bindings": load_channel_bindings(),
+        "agent_links": load_agent_links(),
         "costs": _cost_cache.get("data") or {"today": 0, "week": 0, "_loading": True},
         "portal": portal_dict(),
     }
@@ -670,6 +803,26 @@ class Handler(BaseHTTPRequestHandler):
 
         parsed = urlparse(self.path)
         path = parsed.path
+        if path in ("/miniapp", "/miniapp.html"):
+            if not STATIC_FILE.exists():
+                self._send(404, b"dashboard.html not found", "text/plain; charset=utf-8")
+                return
+            html = STATIC_FILE.read_text(encoding="utf-8")
+            html = html.replace("<head>", "<head>" + MINIAPP_BOOT, 1)
+            self._send(200, html.encode("utf-8"), "text/html; charset=utf-8")
+            return
+        if path == "/telegram-miniapp.js":
+            if not TELEGRAM_MINIAPP_JS.exists():
+                self._send(404, b"not found", "text/plain; charset=utf-8")
+                return
+            self._send(200, TELEGRAM_MINIAPP_JS.read_bytes(), "application/javascript; charset=utf-8")
+            return
+        if path == "/telegram-miniapp.css":
+            if not TELEGRAM_MINIAPP_CSS.exists():
+                self._send(404, b"not found", "text/plain; charset=utf-8")
+                return
+            self._send(200, TELEGRAM_MINIAPP_CSS.read_bytes(), "text/css; charset=utf-8")
+            return
         if path in ("/", "/dashboard", "/dashboard.html", "/index.html"):
             if not STATIC_FILE.exists():
                 self._send(404, b"dashboard.html not found", "text/plain; charset=utf-8")
@@ -738,6 +891,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/grafana/status":
             self._send(200, json.dumps(grafana_status(), ensure_ascii=False).encode("utf-8"))
             return
+        if path == "/api/telegram/config":
+            self._send(200, json.dumps(telegram_miniapp_config(), ensure_ascii=False).encode("utf-8"))
+            return
         if path == "/api/chat/config":
             body = chat_config_dict()
             if body["hasToken"]:
@@ -749,26 +905,53 @@ class Handler(BaseHTTPRequestHandler):
             return
         self._send(404, b"not found", "text/plain; charset=utf-8")
 
-    def do_POST(self):
-        from urllib.parse import urlparse
-
-        parsed = urlparse(self.path)
-        path = parsed.path
-        if path != "/api/tasks":
-            self._send(404, b"not found", "text/plain; charset=utf-8")
-            return
+    def _read_json_body(self, max_len: int = 65536) -> dict | None:
         length = int(self.headers.get("Content-Length") or 0)
-        if length > 65536:
+        if length > max_len:
             self._send(413, b"payload too large", "text/plain; charset=utf-8")
-            return
+            return None
         raw = self.rfile.read(length) if length else b"{}"
         try:
             payload = json.loads(raw.decode("utf-8"))
         except json.JSONDecodeError:
             self._send(400, b"invalid json", "text/plain; charset=utf-8")
-            return
+            return None
         if not isinstance(payload, dict):
             self._send(400, b"expected json object", "text/plain; charset=utf-8")
+            return None
+        return payload
+
+    def do_POST(self):
+        from urllib.parse import urlparse
+
+        parsed = urlparse(self.path)
+        path = parsed.path
+        if path == "/api/telegram/auth":
+            payload = self._read_json_body()
+            if payload is None:
+                return
+            init_data = str(payload.get("initData") or "").strip()
+            token = _load_telegram_bot_token()
+            auth = validate_telegram_init_data(init_data, token) if token else None
+            if not auth:
+                body = json.dumps(
+                    {"ok": False, "error": "invalid_init_data", "dev": not bool(token)},
+                    ensure_ascii=False,
+                ).encode("utf-8")
+                self._send(401 if token else 200, body)
+                return
+            user = auth.get("user") or {}
+            body = json.dumps(
+                {"ok": True, "user": user, "telegram_id": user.get("id")},
+                ensure_ascii=False,
+            ).encode("utf-8")
+            self._send(200, body)
+            return
+        if path != "/api/tasks":
+            self._send(404, b"not found", "text/plain; charset=utf-8")
+            return
+        payload = self._read_json_body()
+        if payload is None:
             return
         try:
             task = add_task_to_pool(payload)
@@ -849,6 +1032,7 @@ def main():
     print(f"[dashboard] bootstrap: /api/bootstrap (быстро)")
     print(f"[dashboard] snapshot:  /api/snapshot (~30-60s первый раз)")
     print(f"[dashboard] autologin chat: http://127.0.0.1:{args.port}/go/chat")
+    print(f"[dashboard] telegram miniapp: http://127.0.0.1:{args.port}/miniapp")
     if args.host == "0.0.0.0":
         print("[dashboard] LAN mode: доступ с других устройств в сети по IP этого ПК")
     try:
