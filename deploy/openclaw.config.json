@@ -1,0 +1,230 @@
+// =============================================================================
+// Golden Hour — OpenClaw Gateway Configuration
+//
+// This file is deployed to /opt/golden-hour/.openclaw/openclaw.json
+// (see deploy/setup-server.sh and deploy/run-deploy.sh).
+//
+// SECRETS: this file contains NO secrets — only ${ENV_VAR} references that
+// OpenClaw resolves at runtime from the service environment (.env via
+// systemd EnvironmentFile). Required env vars: MINIMAX_API_KEY,
+// TELEGRAM_BOT_TOKEN, OPENCLAW_GATEWAY_TOKEN. See deploy/.env.example.
+//
+// MODELS: primary = MiniMax-M3 (cloud), fallback = local Ollama. The fallback
+// fires only when the primary provider fails. The Ollama model is pulled by
+// setup-server.sh (OLLAMA_FALLBACK_MODEL); keep the id below in sync with it.
+// =============================================================================
+{
+  // --- Gateway control plane (loopback-only; not exposed publicly) ----------
+  // Bind/port are passed as CLI flags by the systemd unit (--bind/--port) using
+  // OPENCLAW_GATEWAY_BIND / OPENCLAW_GATEWAY_PORT. Telegram uses long-poll
+  // (outbound), so no inbound port is required.
+  gateway: {
+    bind: "loopback",
+    auth: {
+      token: "${OPENCLAW_GATEWAY_TOKEN}",
+    },
+  },
+
+  // --- Model providers ------------------------------------------------------
+  models: {
+    mode: "merge",
+    providers: {
+      // Primary: MiniMax (Anthropic-compatible endpoint)
+      minimax: {
+        baseUrl: "https://api.minimax.io/anthropic",
+        apiKey: "${MINIMAX_API_KEY}",
+        api: "anthropic-messages",
+        models: [
+          {
+            id: "MiniMax-M3",
+            name: "MiniMax M3",
+            reasoning: true,
+            input: ["text", "image"],
+            contextWindow: 1000000,
+            maxTokens: 131072,
+            cost: { input: 0.6, output: 2.4, cacheRead: 0.12, cacheWrite: 0 },
+          },
+        ],
+      },
+
+      // Fallback: local Ollama daemon (installed by setup-server.sh).
+      // Keep id in sync with OLLAMA_FALLBACK_MODEL in .env.
+      ollama: {
+        baseUrl: "http://127.0.0.1:11434",
+        apiKey: "ollama-local",
+        api: "ollama",
+        timeoutSeconds: 300,
+        models: [
+          {
+            id: "qwen2.5:7b-instruct",
+            name: "qwen2.5:7b-instruct",
+            input: ["text"],
+            params: { keep_alive: "15m" },
+            // qwen2.5 supports tool calling. If a different local model fails
+            // on tool schemas, add: compat: { supportsTools: false }
+          },
+        ],
+      },
+    },
+  },
+
+  // --- Agents ---------------------------------------------------------------
+  agents: {
+    defaults: {
+      model: {
+        primary: "minimax/MiniMax-M3",
+        fallbacks: ["ollama/qwen2.5:7b-instruct"],
+      },
+    },
+
+    list: [
+      // === MAIN agent: "Золотой час" =======================================
+      // Telegram-facing orchestrator AND operator. Unlike the generic
+      // skills/coder/architecture.md (which denies write/exec on main), this
+      // agent KEEPS read/write/edit/exec/process: the bot runs its own
+      // deterministic Node scripts (daily-plan.mjs, session-start.mjs, ...) and
+      // writes per-user data files (profile.md, tasks.yaml). Denying those
+      // would break the bot's core. Code GENERATION for the user is still
+      // delegated to the code-writer subagent (enforced by the `coder` skill
+      // + AGENTS.md), not by tool removal.
+      {
+        id: "golden-hour",
+        name: "golden-hour",
+        default: true,
+        workspace: "/opt/golden-hour",
+        model: {
+          primary: "minimax/MiniMax-M3",
+          fallbacks: ["ollama/qwen2.5:7b-instruct"],
+        },
+        identity: {
+          name: "Золотой час",
+          emoji: "🌅",
+          avatar: "avatars/golden-hour/variant-1.png",
+        },
+        subagents: {
+          allowAgents: ["code-writer"],
+          requireAgentId: true,
+        },
+        tools: {
+          allow: [
+            "read", "write", "edit", "exec", "process",
+            "web_search", "web_fetch",
+            "message", "cron",
+            "sessions_spawn", "sessions_list", "sessions_send",
+            "skill_workshop",
+            "update_goal", "update_plan", "create_goal", "get_goal",
+          ],
+          deny: [
+            // Media generation is delegated to dedicated subagents
+            // (e.g. web-material-finder already handles image_generate).
+            "image_generate", "music_generate", "video_generate",
+          ],
+        },
+      },
+
+      // === SUBAGENT: code-writer ===========================================
+      // Isolated code-generation specialist. Sees no user dialog; gets a fresh,
+      // sandboxed context per spawn. Cannot message channels or touch goals.
+      {
+        id: "code-writer",
+        name: "code-writer",
+        workspace: "/opt/golden-hour/.openclaw/workspace-code",
+        model: {
+          primary: "minimax/MiniMax-M3",
+          fallbacks: ["ollama/qwen2.5:7b-instruct"],
+        },
+        tools: {
+          allow: [
+            "read", "write", "edit", "apply_patch",
+            "exec", "process",
+            "web_search", "web_fetch",
+          ],
+          deny: [
+            "message", "cron",
+            "sessions_spawn", "sessions_list", "sessions_send",
+            "image_generate", "music_generate", "video_generate",
+            "skill_workshop",
+            "update_goal", "update_plan", "create_goal", "get_goal",
+          ],
+        },
+      },
+
+      // === ДОБАВЛЕНИЕ НОВЫХ СУБАГЕНТОВ ======================================
+      // To add a new subagent (e.g. a media generator):
+      //   1. Add an agent object here with its own id, workspace, tools.
+      //   2. Add its id to golden-hour.subagents.allowAgents above.
+      //   3. (optional) Add a skill under skills/ that triggers the delegation.
+      // Example skeleton:
+      // {
+      //   id: "media-writer",
+      //   name: "media-writer",
+      //   workspace: "/opt/golden-hour/.openclaw/workspace-media",
+      //   model: { primary: "minimax/MiniMax-M3", fallbacks: ["ollama/qwen2.5:7b-instruct"] },
+      //   tools: { allow: ["read", "image_generate"], deny: ["message", "exec"] },
+      // },
+    ],
+  },
+
+  // --- Session scope: separate session per Telegram user --------------------
+  session: {
+    dmScope: "per-channel-peer",
+  },
+
+  // --- Channels -------------------------------------------------------------
+  channels: {
+    telegram: {
+      enabled: true,
+      accounts: {
+        "golden-hour": {
+          name: "Золотой час",
+          enabled: true,
+          dmPolicy: "open",
+          allowFrom: ["*"],
+          capabilities: {
+            // Required for reminder inline buttons
+            inlineButtons: "all",
+          },
+          botToken: {
+            source: "env",
+            id: "TELEGRAM_BOT_TOKEN",
+          },
+          commands: {
+            native: false,
+            nativeSkills: false,
+          },
+          customCommands: [
+            { command: "plan", description: "Собрать или пересобрать макро-план подготовки" },
+            { command: "today", description: "План на сегодня" },
+            { command: "tasks", description: "Активные задачи" },
+            { command: "progress", description: "Прогресс, что горит, итог дня" },
+            { command: "triage", description: "Разобрать список задач по приоритетам" },
+            { command: "break", description: "Разбить крупную задачу на шаги" },
+            { command: "recur", description: "Повторяющиеся дела" },
+            { command: "timer", description: "Фокус-сессия: старт, стоп" },
+            { command: "checkin", description: "Чек-ин дня" },
+            { command: "reflect", description: "Рефлексия при срыве" },
+            { command: "repeat", description: "Повтор слабых тем (spaced repetition)" },
+            { command: "stats", description: "Статистика за период" },
+            { command: "calendar", description: "Google Calendar: подключение и синхронизация" },
+            { command: "materials", description: "Материалы по цели" },
+            { command: "notes", description: "Конспект аудио-урока" },
+            { command: "profile", description: "Просмотр и правка профиля" },
+            { command: "help", description: "Что умеет бот" },
+          ],
+        },
+      },
+    },
+  },
+
+  // --- Routing: Telegram account → golden-hour agent ------------------------
+  bindings: [
+    {
+      type: "route",
+      agentId: "golden-hour",
+      match: {
+        channel: "telegram",
+        accountId: "golden-hour",
+      },
+    },
+  ],
+}

@@ -1,0 +1,8 @@
+﻿# Local runtime / binaries
+grafana/.bin/
+grafana/data/
+grafana/prometheus-data/
+*.log
+__pycache__/
+*.pyc
+.env

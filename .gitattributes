@@ -1,0 +1,6 @@
+# Force LF for deploy files that run on the Linux server — CRLF would break
+# shebangs (`#!/usr/bin/env bash\r` → "bad interpreter") and systemd parsing.
+*.sh             text eol=lf
+*.service        text eol=lf
+deploy/**        text eol=lf
+.github/**       text eol=lf

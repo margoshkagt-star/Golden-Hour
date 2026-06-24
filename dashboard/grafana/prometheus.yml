@@ -1,0 +1,9 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: openclaw
+    metrics_path: /api/prometheus/metrics
+    static_configs:
+      - targets: ["127.0.0.1:18790"]

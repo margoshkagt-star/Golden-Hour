@@ -1,0 +1,61 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - deploy
+
+# Only one deployment at a time; never cancel an in-flight deploy
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+env:
+  DEPLOY_PATH: /opt/golden-hour
+  SERVICE_NAME: golden-hour
+
+jobs:
+  deploy:
+    name: Deploy Golden Hour Bot
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+
+    steps:
+      - name: Validate required secrets
+        run: |
+          : "${SERVER_HOST:?'Set SERVER_HOST in repository Secrets'}"
+          : "${SERVER_USER:?'Set SERVER_USER in repository Secrets'}"
+          : "${SSH_PRIVATE_KEY:?'Set SSH_PRIVATE_KEY in repository Secrets'}"
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      # The deploy key in authorized_keys MUST have ForceCommand set to
+      # /opt/golden-hour/deploy/ssh-deploy-wrapper.sh (see deploy/setup-server.sh).
+      # The SSH session therefore CANNOT run arbitrary code: the wrapper ignores
+      # whatever we send, extracts only a validated commit SHA from it, and runs
+      # the root deploy script via sudo. We send just the SHA below.
+      - name: Trigger server-side deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Non-standard SSH port — override via repository secret SSH_PORT
+          port: ${{ secrets.SSH_PORT || 47822 }}
+          timeout: 60s
+          command_timeout: 10m
+          # ForceCommand runs the wrapper regardless of this line; the wrapper
+          # greps the 40-hex SHA out of it and refuses anything else.
+          script: echo "${{ github.sha }}"
+
+      - name: Report result
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          echo "Deploy status : $STATUS"
+          echo "Branch        : ${{ github.ref_name }}"
+          echo "Commit SHA    : ${{ github.sha }}"
+          echo "Triggered by  : ${{ github.actor }}"
